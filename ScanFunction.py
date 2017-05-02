@@ -7,7 +7,7 @@ WIDTH = 90
 HEIGHT = 24
 ANALOG_ROWS = 16
 DIGITAL_ROWS = 21
-PARAMETER_ROWS = 6
+PARAMETER_ROWS = 5
 ROWS = ANALOG_ROWS + DIGITAL_ROWS + PARAMETER_ROWS
 
 class ScanFunction(object):
@@ -94,6 +94,15 @@ class ScanFunctionSegment(QWidget):
         self.name_layout.addWidget(self.name_box)
         self.segment_layout.addLayout(self.name_layout)
 
+        # Create label and box for duration
+        self.duration_label = QLabel("Duration")
+        self.duration_box = QLineEdit("10")
+        self.duration_box.textChanged.connect(self.isChanged)
+        self.duration_layout = QHBoxLayout()
+        self.duration_layout.addWidget(self.duration_label)
+        self.duration_layout.addWidget(self.duration_box)
+        self.segment_layout.addLayout(self.duration_layout)
+
         # Create table header to separate outputs
         self.output1_label = QLabel("Output 1")
         self.segment_layout.addWidget(self.output1_label)
@@ -117,6 +126,18 @@ class ScanFunctionSegment(QWidget):
         self.output2_table.type_box.activated[str].connect(self.isChanged)
         for row in range(1, PARAMETER_ROWS):
             self.output2_table.cellWidget(row, 1).textChanged.connect(self.isChanged)
+
+        # Create table header to separate outputs
+        self.output3_label = QLabel("Output 3")
+        self.segment_layout.addWidget(self.output3_label)
+        # Create table for parameters
+        self.output3_table = OutputParameterTable()
+        # Add table to layout
+        self.segment_layout.addWidget(self.output3_table)
+        # Signals for updating plot
+        self.output3_table.type_box.activated[str].connect(self.isChanged)
+        for row in range(1, PARAMETER_ROWS):
+            self.output3_table.cellWidget(row, 1).textChanged.connect(self.isChanged)
 
         # Create table for analog outputs
         self.analog_table = QTableWidget(ANALOG_ROWS, 2)
@@ -172,11 +193,10 @@ class OutputParameterTable(QTableWidget):
         self.setFixedHeight(HEIGHT*PARAMETER_ROWS+2)
         # Set up labels
         self.setItem(0, 0, QTableWidgetItem("Type"))
-        self.setItem(1, 0, QTableWidgetItem("Duration"))
-        self.setItem(2, 0, QTableWidgetItem("Start Freq"))
-        self.setItem(3, 0, QTableWidgetItem("End Freq"))
-        self.setItem(4, 0, QTableWidgetItem("Duty Cycle"))
-        self.setItem(5, 0, QTableWidgetItem("Step Res"))
+        self.setItem(1, 0, QTableWidgetItem("Start Freq"))
+        self.setItem(2, 0, QTableWidgetItem("End Freq"))
+        self.setItem(3, 0, QTableWidgetItem("Duty Cycle"))
+        self.setItem(4, 0, QTableWidgetItem("Step Res"))
         # Make labels uneditable
         for row in range(0, PARAMETER_ROWS):
             self.item(row, 0).setFlags(Qt.ItemIsEnabled)
@@ -196,7 +216,6 @@ class OutputParameterTable(QTableWidget):
                 self.setCellWidget(row, 1, QLineEdit())
 
         # Signal character for Arduino - default is 'f' for Fixed
-        self.type = 'f'
         self.updateType("Fixed")
 
         # Trigger update segment type
@@ -205,45 +224,39 @@ class OutputParameterTable(QTableWidget):
     def updateType(self, type):
         # Ensure start and end frequencies aren't mirroring each other from previously being a fixed segment
         try:
-            self.cellWidget(2, 1).textChanged.disconnect()
+            self.cellWidget(1, 1).textChanged.disconnect(self.cellWidget(2, 1).setText)
         except:
             pass
 
         if type == "Fixed":
-            self.type = 'f'
-            self.cellWidget(3, 1).setEnabled(False)
-            self.cellWidget(5, 1).setEnabled(False)
-            self.cellWidget(1, 1).setText("10")
+            self.cellWidget(2, 1).setEnabled(False)
+            self.cellWidget(4, 1).setEnabled(False)
+            self.cellWidget(1, 1).setText("100000")
             self.cellWidget(2, 1).setText("100000")
-            self.cellWidget(3, 1).setText("100000")
             # Connect start and end frequencies in fixed segment
-            self.cellWidget(2, 1).textChanged.connect(self.cellWidget(3, 1).setText)
-            self.cellWidget(4, 1).setText("50")
+            self.cellWidget(1, 1).textChanged.connect(self.cellWidget(2, 1).setText)
+            self.cellWidget(3, 1).setText("50")
+            self.cellWidget(4, 1).setText("")
         elif type == "Ramp":
-            self.type = 'r'
-            self.cellWidget(3, 1).setEnabled(True)
-            self.cellWidget(5, 1).setEnabled(False)
-            self.cellWidget(1, 1).setText("10")
-            self.cellWidget(2, 1).setText("100000")
-            self.cellWidget(3, 1).setText("200000")
-            self.cellWidget(4, 1).setText("50")
+            self.cellWidget(2, 1).setEnabled(True)
+            self.cellWidget(4, 1).setEnabled(False)
+            self.cellWidget(1, 1).setText("100000")
+            self.cellWidget(2, 1).setText("200000")
+            self.cellWidget(3, 1).setText("50")
+            self.cellWidget(4, 1).setText("")
         elif type == "Mass Analysis":
-            self.type = 'm'
-            self.cellWidget(3, 1).setEnabled(True)
-            self.cellWidget(5, 1).setEnabled(True)
-            self.cellWidget(1, 1).setText("10")
-            self.cellWidget(2, 1).setText("400000")
-            self.cellWidget(3, 1).setText("100000")
-            self.cellWidget(4, 1).setText("50")
-            self.cellWidget(5, 1).setText("5")
+            self.cellWidget(2, 1).setEnabled(True)
+            self.cellWidget(4, 1).setEnabled(True)
+            self.cellWidget(1, 1).setText("400000")
+            self.cellWidget(2, 1).setText("100000")
+            self.cellWidget(3, 1).setText("50")
+            self.cellWidget(4, 1).setText("5")
         elif type == "Dump":
-            self.type = 'd'
-            self.cellWidget(3, 1).setEnabled(True)
-            self.cellWidget(5, 1).setEnabled(True)
+            self.cellWidget(2, 1).setEnabled(True)
+            self.cellWidget(4, 1).setEnabled(True)
         elif type == "Custom":
-            self.type = 'c'
-            self.cellWidget(3, 1).setEnabled(True)
-            self.cellWidget(5, 1).setEnabled(True)
+            self.cellWidget(2, 1).setEnabled(True)
+            self.cellWidget(4, 1).setEnabled(True)
 
 class ScanFunctionPlot(pg.PlotWidget):
     def __init__(self):
@@ -254,36 +267,66 @@ class ScanFunctionPlot(pg.PlotWidget):
         self.output1_y_values = []
         self.output2_x_values = []
         self.output2_y_values = []
+        self.output3_x_values = []
+        self.output3_y_values = []
         for segment in scan_function:
             # Segment start time and frequency
             try:
                 self.output1_x_values.append(self.output1_x_values[-1])
+            except:
+                self.output1_x_values.append(0)
+            try:
                 self.output2_x_values.append(self.output2_x_values[-1])
             except:
-                self.output1_x_values.append(0)
                 self.output2_x_values.append(0)
             try:
-                self.output1_y_values.append(float(segment.output1_table.cellWidget(2, 1).text()))
-                self.output2_y_values.append(float(segment.output2_table.cellWidget(2, 1).text()))
+                self.output3_x_values.append(self.output3_x_values[-1])
+            except:
+                self.output3_x_values.append(0)
+
+            try:
+                self.output1_y_values.append(float(segment.output1_table.cellWidget(1, 1).text()))
             except:
                 self.output1_y_values.append(0)
+            try:
+                self.output2_y_values.append(float(segment.output2_table.cellWidget(1, 1).text()))
+            except:
                 self.output2_y_values.append(0)
+            try:
+                self.output3_y_values.append(float(segment.output3_table.cellWidget(1, 1).text()))
+            except:
+                self.output3_y_values.append(0)
+
             # Segment end time and frequency
             try:
-                self.output1_x_values.append(float(segment.output1_table.cellWidget(1, 1).text()) + float(self.output1_x_values[-1]))
-                self.output2_x_values.append(float(segment.output2_table.cellWidget(1, 1).text()) + float(self.output2_x_values[-1]))
+                self.output1_x_values.append(float(segment.duration_box.text()) + float(self.output1_x_values[-1]))
             except:
                 self.output1_x_values.append(0)
+            try:
+                self.output2_x_values.append(float(segment.duration_box.text()) + float(self.output2_x_values[-1]))
+            except:
                 self.output2_x_values.append(0)
             try:
-                self.output1_y_values.append(float(segment.output1_table.cellWidget(3, 1).text()))
-                self.output2_y_values.append(float(segment.output2_table.cellWidget(3, 1).text()))
+                self.output3_x_values.append(float(segment.duration_box.text()) + float(self.output3_x_values[-1]))
+            except:
+                self.output3_x_values.append(0)
+
+            try:
+                self.output1_y_values.append(float(segment.output1_table.cellWidget(2, 1).text()))
             except:
                 self.output1_y_values.append(0)
+            try:
+                self.output2_y_values.append(float(segment.output2_table.cellWidget(2, 1).text()))
+            except:
                 self.output2_y_values.append(0)
+            try:
+                self.output3_y_values.append(float(segment.output3_table.cellWidget(2, 1).text()))
+            except:
+                self.output3_y_values.append(0)
 
     def updatePlot(self, scan_function):
         self.generatePlotData(scan_function)
         self.plotItem.clear()
-        self.plotItem.plot(self.output1_x_values, self.output1_y_values, pen='r')
-        self.plotItem.plot(self.output2_x_values, self.output2_y_values, pen='b')
+        self.plotItem.plot(self.output1_x_values, self.output1_y_values, pen='g')
+        self.plotItem.plot(self.output2_x_values, self.output2_y_values, pen='r')
+        self.plotItem.plot(self.output3_x_values, self.output3_y_values, pen='b')

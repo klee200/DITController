@@ -14,13 +14,15 @@ def convertToJson(scan_function):
         segment_data = {}
         # Write name to dictionary
         segment_data['Name'] = segment.name_box.text()
+        # Write duration to dictionary
+        segment_data['Duration'] = float(segment.duration_box.text())
 
         # Write output 1 parameters to dictionary
         segment_data['Output 1'] = {}
         for row in range(segment.output1_table.rowCount()):
             # If putting type into dictionary, use type member variable
             if segment.output1_table.item(row, 0).text() == "Type":
-                segment_data['Output 1'][segment.output1_table.item(row, 0).text()] = segment.output1_table.type
+                segment_data['Output 1'][segment.output1_table.item(row, 0).text()] = segment.output1_table.cellWidget(row, 1).currentText()
             # All other parameters are numbers that can be read from the table
             else:
                 try:
@@ -33,7 +35,7 @@ def convertToJson(scan_function):
         for row in range(segment.output2_table.rowCount()):
             # If putting type into dictionary, use type member variable
             if segment.output2_table.item(row, 0).text() == "Type":
-                segment_data['Output 2'][segment.output2_table.item(row, 0).text()] = segment.output2_table.type
+                segment_data['Output 2'][segment.output2_table.item(row, 0).text()] = segment.output2_table.cellWidget(row, 1).currentText()
             # All other parameters are numbers that can be read from the table
             else:
                 try:
@@ -60,7 +62,6 @@ def convertToJson(scan_function):
         # Append segment data into data list
         scan_function_dict['Data'].append(segment_data)
 
-    scan_function_dict['job'] = 'download'
     # Dump json-like list into actual json object and return it
     return json.dumps(scan_function_dict, sort_keys=True)
 
