@@ -43,6 +43,19 @@ def convertToJson(scan_function):
                 except:
                     segment_data['Output 2'][segment.output2_table.item(row, 0).text()] = None
 
+        # Write output 3 parameters to dictionary
+        segment_data['Output 3'] = {}
+        for row in range(segment.output3_table.rowCount()):
+            # If putting type into dictionary, use type member variable
+            if segment.output3_table.item(row, 0).text() == "Type":
+                segment_data['Output 3'][segment.output3_table.item(row, 0).text()] = segment.output3_table.cellWidget(row, 1).currentText()
+            # All other parameters are numbers that can be read from the table
+            else:
+                try:
+                    segment_data['Output 3'][segment.output3_table.item(row, 0).text()] = float(segment.output3_table.cellWidget(row, 1).text())
+                except:
+                    segment_data['Output 3'][segment.output3_table.item(row, 0).text()] = None
+
         # Read analog values from table
         segment_data['Analog'] = []
         for row in range(segment.analog_table.rowCount()):
