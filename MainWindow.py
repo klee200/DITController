@@ -1,16 +1,19 @@
-import sys
 import pdb
 import serial
 from PyQt5.QtWidgets import *
-from pyqtgraph import *
-from ui.ScanFunction import ScanFunction
-from ui.Communication import *
-from ui.DialogWindows import ConnectionDialog
+from PyQt5.QtCore import *
+from ScanFunction import ScanFunction
+from Communication import *
+from DialogWindows import ConnectionDialog
 
 class MainWindow(QMainWindow):
     def __init__(self):
         # Call parent constructor
         super(MainWindow, self).__init__()
+
+        # Create scan function object
+        self.scan_function = ScanFunction()
+
         # Create splitter for left and right halves and make it the central widget
         self.main_splitter = QSplitter()
         self.main_splitter.setContentsMargins(10,10,10,10)
@@ -18,7 +21,7 @@ class MainWindow(QMainWindow):
 
         # Left half of main layout has two vertically stacked sections
         self.left_splitter = QSplitter()
-        self.left_splitter.setOrientation(QtCore.Qt.Vertical)
+        self.left_splitter.setOrientation(Qt.Vertical)
         # Add left half to main splitter
         self.main_splitter.addWidget(self.left_splitter)
 
@@ -30,23 +33,27 @@ class MainWindow(QMainWindow):
         # Add right half to main splitter
         self.main_splitter.addWidget(self.right_half)
 
+        # Make left half as large as possible
+        self.main_splitter.setSizes([1, 0])
+
         # Top left displays scan sections
+        # Each output is displayed on a different tab
         self.scan_area = QScrollArea()
-        self.scan_layout = QHBoxLayout()
-        self.scan_layout.setAlignment(QtCore.Qt.AlignLeft)
-        self.scan_widget = QWidget()
-        self.scan_widget.setLayout(self.scan_layout)
-        self.scan_area.setWidget(self.scan_widget)
+        # Create output 1 area for tab 1
+        self.scan_area.setWidget(QWidget())
         self.scan_area.setWidgetResizable(True)
+        self.scan_area.widget().setLayout(QHBoxLayout())
+        self.scan_area.widget().layout().setAlignment(Qt.AlignLeft)
         # Add scan area to left splitter
         self.left_splitter.addWidget(self.scan_area)
 
         # Bottom left displays plot of scan sections
-        self.plot = PlotWidget()
-        self.plot.setLabel('left', text='Frequency', units='Hz')
-        self.plot.setLabel('bottom', text='Time', units='ms')
-        # Add plot to left splitter
-        self.left_splitter.addWidget(self.plot)
+        # Create axes for plot objects
+        self.scan_function.scan_plot.setLabel('left', text='Frequency', units='Hz')
+        self.scan_function.scan_plot.setLabel('bottom', text='Time', units='ms')
+        # Add plots to left half and hide them - tab selection shows the corresponding plot and continues to hide the other
+        self.left_splitter.addWidget(self.scan_function.scan_plot)
+        self.scan_function.scan_plot.hide()
 
         # Top right displays buttons in grid layout
         self.button_layout = QGridLayout()
@@ -100,14 +107,11 @@ class MainWindow(QMainWindow):
         # Show dialog box when button is clicked
         self.connection.triggered.connect(self.connection_dialog.show)
 
-        # Create scan function object
-        self.scan_function = ScanFunction()
-
     def addScanSegment(self):
         # Tell Scan Function object to add a new Segment object
         self.scan_function.addSegment()
         # Create new widget in Main Window for last segment in scan function
-        self.scan_layout.addWidget(self.scan_function.scan_list[-1])
+        self.scan_area.widget().layout().addWidget(self.scan_function.scan_list[-1])
         # Announce segment creation
         self.announcer.appendPlainText("New segment added")
 
@@ -115,7 +119,7 @@ class MainWindow(QMainWindow):
         try:
             # Remove segment widget from layout
             self.scan_function.scan_list[-1].hide()
-            self.scan_layout.removeWidget(self.scan_function.scan_list[-1])
+            self.scan_area.widget().layout().removeWidget(self.scan_function.scan_list[-1])
             # Tell Scan function object to remove segment object
             self.scan_function.removeSegment()
             # Announce segment removal
@@ -124,9 +128,13 @@ class MainWindow(QMainWindow):
             # If no segment, announce error
             self.announcer.appendPlainText("No segment to remove")
 
+    def displayScanFunctionPlot(self):
+        # Add plot to left splitter
+        self.scan_function.scan_plot.show()
+
     def downloadScanFunction(self):
         # Convert list into json string
-        scan_function_json = convertToJson(self.scan_function.scan_list)
+        scan_function_json = convertToJson(self.scan_function)
         self.announcer.appendPlainText(scan_function_json)
         try:
             # Send json string to Arduino
@@ -153,12 +161,3 @@ class MainWindow(QMainWindow):
             self.connection_dialog.master_serial.serialWrite('S')
         except:
             self.announcer.appendPlainText("No serial port found")
-
-def main():
-    app = QApplication(sys.argv)
-    controller_interface = MainWindow()
-    controller_interface.show()
-    sys.exit(app.exec_())
-
-if __name__ == '__main__':
-    main()

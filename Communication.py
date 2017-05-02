@@ -4,42 +4,65 @@ import threading
 import pdb
 
 # Function for converting scan function to json string
-def convertToJson(scan_list):
-    # Make json-like object list
-    scan_list_json = {}
-    scan_list_json['data'] = []
-    segment_data = {}
+def convertToJson(scan_function):
+    # Make dictionary for scan list
+    scan_function_dict = {}
+    scan_function_dict['Data'] = []
     # Create list of segment parameters with name labels
-    for segment in scan_list:
-        for row in range(segment.segment_table.rowCount()):
-            # If putting type into json string, use type member variable
-            if segment.segment_table.item(row, 0).text() == "Type":
-                segment_data[segment.segment_table.item(row, 0).text()] = segment.type
+    for segment in scan_function.scan_list:
+        # Dictionary to hold segment parameters
+        segment_data = {}
+        # Write name to dictionary
+        segment_data['Name'] = segment.name_box.text()
+
+        # Write output 1 parameters to dictionary
+        segment_data['Output 1'] = {}
+        for row in range(segment.output1_table.rowCount()):
+            # If putting type into dictionary, use type member variable
+            if segment.output1_table.item(row, 0).text() == "Type":
+                segment_data['Output 1'][segment.output1_table.item(row, 0).text()] = segment.output1_table.type
             # All other parameters are numbers that can be read from the table
             else:
                 try:
-                    segment_data[segment.segment_table.item(row, 0).text()] = float(segment_data[segment.segment_table.item(row, 1).text()])
+                    segment_data['Output 1'][segment.output1_table.item(row, 0).text()] = float(segment.output1_table.cellWidget(row, 1).text())
                 except:
-                    segment_data[segment.segment_table.item(row, 0).text()] = None
+                    segment_data['Output 1'][segment.output1_table.item(row, 0).text()] = None
+
+        # Write output 2 parameters to dictionary
+        segment_data['Output 2'] = {}
+        for row in range(segment.output2_table.rowCount()):
+            # If putting type into dictionary, use type member variable
+            if segment.output2_table.item(row, 0).text() == "Type":
+                segment_data['Output 2'][segment.output2_table.item(row, 0).text()] = segment.output2_table.type
+            # All other parameters are numbers that can be read from the table
+            else:
+                try:
+                    segment_data['Output 2'][segment.output2_table.item(row, 0).text()] = float(segment.output2_table.cellWidget(row, 1).text())
+                except:
+                    segment_data['Output 2'][segment.output2_table.item(row, 0).text()] = None
+
         # Read analog values from table
-        segment_data['analog'] = []
+        segment_data['Analog'] = []
         for row in range(segment.analog_table.rowCount()):
             try:
-                segment_data['analog'].append(float(segment_data[segment.analog_table.item(row, 1).text()]))
+                segment_data['Analog'].append(float(segment.analog_table.cellWidget(row, 1).text()))
             except:
-                segment_data['analog'].append(None)
+                segment_data['Analog'].append(None)
+
         # Read digital values from table
-        segment_data['digital'] = []
+        segment_data['Digital'] = []
         for row in range(segment.digital_table.rowCount()):
             try:
-                segment_data['digital'].append(float(segment_data[segment.digital_table.item(row, 1).text()]))
+                segment_data['Digital'].append(segment.digital_table.cellWidget(row, 1).currentText())
             except:
-                segment_data['digital'].append(None)
+                segment_data['Digital'].append(None)
+
         # Append segment data into data list
-        scan_list_json['data'].append(segment_data)
-    scan_list_json['job'] = 'download'
+        scan_function_dict['Data'].append(segment_data)
+
+    scan_function_dict['job'] = 'download'
     # Dump json-like list into actual json object and return it
-    return json.dumps(scan_list_json, sort_keys=True)
+    return json.dumps(scan_function_dict, sort_keys=True)
 
 class SerialPort(serial.Serial):
     def __init__(self, port_choice, announcer):

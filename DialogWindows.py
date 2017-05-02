@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import *
-from ui.Communication import SerialPort
+from Communication import SerialPort
 import pdb
 
 class ConnectionDialog(QDialog):
