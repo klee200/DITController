@@ -1,17 +1,19 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
+from collections import OrderedDict
+from math import *
 import pyqtgraph as pg
+import json
 import pdb
 
-WIDTH = 90
+WIDTH = 80
 HEIGHT = 24
 ANALOG_ROWS = 16
 DIGITAL_ROWS = 21
-PARAMETER_ROWS = 5
-ROWS = ANALOG_ROWS + DIGITAL_ROWS + PARAMETER_ROWS
+PARAMETERS = 6
 
 class ScanFunction(object):
-    def __init__(self):
+    def __init__(self, main_window):
         # Create header for scan function object
         # self.header = ScanFunctionHeader()
         # Create list for holding segment objects
@@ -20,21 +22,105 @@ class ScanFunction(object):
         pg.setConfigOption('background', 'w')
         pg.setConfigOption('foreground', 'k')
         self.scan_plot = ScanFunctionPlot()
+        self.main_window = main_window
 
-    def addSegment(self):
-        # Add new segment object to list
-        self.scan_list.append(ScanFunctionSegment())
-        # Connect signal to segment object
-        self.scan_list[-1].is_changed.connect(lambda: self.scan_plot.updatePlot(self.scan_list))
-        # Update plot
-        self.scan_plot.updatePlot(self.scan_list)
-        self.scan_plot.show()
+    def addSegment(self, position):
+        if position <= len(self.main_window.scan_function.scan_list) and position > -1:
+            # Add new segment object to list
+            self.new_segment = ScanFunctionSegment()
+            self.scan_list.insert(position, self.new_segment)
+            # Connect signal to segment object
+            self.new_segment.is_changed.connect(lambda: self.scan_plot.updatePlot(self.scan_list))
+            # Update plot
+            self.scan_plot.updatePlot(self.scan_list)
+            self.scan_plot.show()
+            # Function to copy parameters from previous segment
+            if position > 0:
+                self.new_segment.convertFromDictionary(self.scan_list[position-1].convertToDictionary())
+            # Create new widget in main window, recreate any following widgets so order is correct
+            for segment in range(position, len(self.main_window.scan_function.scan_list)):
+                self.main_window.scan_area.widget().layout().addWidget(self.main_window.scan_function.scan_list[segment])
+            # Announce creation of new segment
+            self.main_window.announcer.appendPlainText("New Segment added at position " + str(position+1))
+        else:
+            # Announce failure to make segment
+            self.main_window.announcer.appendPlainText("Invalid position")
 
-    def removeSegment(self):
-        # Remove segment object from list
-        self.scan_list.pop()
-        # Update plot
-        self.scan_plot.updatePlot(self.scan_list)
+        return self.new_segment
+
+    def removeSegment(self, position):
+        try:
+            # Remove segment widget from layout
+            self.main_window.scan_function.scan_list[position].hide()
+            self.main_window.scan_area.widget().layout().removeWidget(self.main_window.scan_function.scan_list[position])
+            # Remove segment object from list
+            self.scan_list.remove(self.scan_list[position])
+            # Update plot
+            self.scan_plot.updatePlot(self.scan_list)
+            # Announce segment removal
+            self.main_window.announcer.appendPlainText("Segment removed from position " + str(position+1))
+        except:
+            # If no segment, announce error
+            self.main_window.announcer.appendPlainText("No segment to remove")
+
+    def convertFreqToMass(self, constant):
+        for segment in self.scan_list:
+            for output in segment.output_list:
+                try:
+                    # Convert start and end frequencies
+                    omega_start = float(output.parameter_dict["Start Freq"][1].text())
+                    omega_end = float(output.parameter_dict["End Freq"][1].text())
+                    mass_to_charge_start = constant/pow(omega_start, 2)
+                    mass_to_charge_end = constant/pow(omega_end, 2)
+                    output.parameter_dict["Start Freq"][1].setText(str(round(mass_to_charge_start, 5)))
+                    output.parameter_dict["End Freq"][1].setText(str(round(mass_to_charge_end, 5)))
+                except:
+                    pass
+
+
+    def convertMassToFreq(self, constant):
+        for segment in self.scan_list:
+            for output in segment.output_list:
+                try:
+                    # Convert start and end m/z values
+                    mass_to_charge_start = float(output.parameter_dict["Start Freq"][1].text())
+                    mass_to_charge_end = float(output.parameter_dict["End Freq"][1].text())
+                    omega_start = sqrt(constant/mass_to_charge_start)
+                    omega_end = sqrt(constant/mass_to_charge_end)
+                    output.parameter_dict["Start Freq"][1].setText(str(round(omega_start, 5)))
+                    output.parameter_dict["End Freq"][1].setText(str(round(omega_end, 5)))
+                except:
+                    pass
+
+    # Function for converting scan function to dictionary
+    def convertToDictionary(self):
+        # Make dictionary for scan list
+        self.scan_function_dict = {}
+        self.scan_function_dict['Data'] = []
+        # Create list of segment parameters with name labels
+        for segment in self.scan_list:
+            self.scan_function_dict['Data'].append(segment.convertToDictionary())
+
+        # Dump json-like list into actual json object and return it
+        return self.scan_function_dict
+
+    def convertToJson(self):
+        return json.dumps(self.convertToDictionary(), sort_keys=True, indent=4)
+
+    def convertFromJson(self, scan_function_json):
+        # Clear widgets from window
+        for segment in self.scan_list:
+            segment.hide()
+            self.main_window.scan_area.widget().layout().removeWidget(segment)
+        # Clear scan list
+        self.scan_list.clear()
+        # Create new segment object
+        self.convertFromDictionary(json.loads(scan_function_json))
+
+    def convertFromDictionary(self, scan_function_data):
+        # Make segments
+        for segment_data in scan_function_data['Data']:
+            self.addSegment(len(self.scan_list)).convertFromDictionary(segment_data)
 
 # class ScanFunctionHeader(QWidget):
 #     def __init__(self):
@@ -84,7 +170,7 @@ class ScanFunctionSegment(QWidget):
         # Create layout for segment
         self.segment_layout = QVBoxLayout()
         self.setLayout(self.segment_layout)
-        self.setFixedWidth(200)
+        self.setFixedWidth(WIDTH*2+10)
 
         # Create label and box for name
         self.name_label = QLabel("Name")
@@ -97,47 +183,23 @@ class ScanFunctionSegment(QWidget):
         # Create label and box for duration
         self.duration_label = QLabel("Duration")
         self.duration_box = QLineEdit("10")
+        self.duration_box.setFixedWidth(WIDTH)
         self.duration_box.textChanged.connect(self.isChanged)
         self.duration_layout = QHBoxLayout()
         self.duration_layout.addWidget(self.duration_label)
         self.duration_layout.addWidget(self.duration_box)
         self.segment_layout.addLayout(self.duration_layout)
 
-        # Create table header to separate outputs
-        self.output1_label = QLabel("Output 1")
-        self.segment_layout.addWidget(self.output1_label)
-        # Create table for parameters
-        self.output1_table = OutputParameterTable()
-        # Add table to layout
-        self.segment_layout.addWidget(self.output1_table)
-        # Signals for updating plot
-        self.output1_table.type_box.activated[str].connect(self.isChanged)
-        for row in range(1, PARAMETER_ROWS):
-            self.output1_table.cellWidget(row, 1).textChanged.connect(self.isChanged)
-
-        # Create table header to separate outputs
-        self.output2_label = QLabel("Output 2")
-        self.segment_layout.addWidget(self.output2_label)
-        # Create table for parameters
-        self.output2_table = OutputParameterTable()
-        # Add table to layout
-        self.segment_layout.addWidget(self.output2_table)
-        # Signals for updating plot
-        self.output2_table.type_box.activated[str].connect(self.isChanged)
-        for row in range(1, PARAMETER_ROWS):
-            self.output2_table.cellWidget(row, 1).textChanged.connect(self.isChanged)
-
-        # Create table header to separate outputs
-        self.output3_label = QLabel("Output 3")
-        self.segment_layout.addWidget(self.output3_label)
-        # Create table for parameters
-        self.output3_table = OutputParameterTable()
-        # Add table to layout
-        self.segment_layout.addWidget(self.output3_table)
-        # Signals for updating plot
-        self.output3_table.type_box.activated[str].connect(self.isChanged)
-        for row in range(1, PARAMETER_ROWS):
-            self.output3_table.cellWidget(row, 1).textChanged.connect(self.isChanged)
+        # Create Output sections
+        self.output_list = []
+        for output in range(3):
+            self.output_list.append(OutputParameterLayout(output))
+            self.segment_layout.addLayout(self.output_list[output])
+            for name, [label, parameter] in self.output_list[output].parameter_dict.items():
+                try:
+                    parameter.textChanged.connect(self.isChanged)
+                except:
+                    parameter.currentTextChanged.connect(self.isChanged)
 
         # Create table for analog outputs
         self.analog_table = QTableWidget(ANALOG_ROWS, 2)
@@ -146,6 +208,7 @@ class ScanFunctionSegment(QWidget):
         # Set up sizes and hide default headers
         self.analog_table.horizontalHeader().hide()
         self.analog_table.horizontalHeader().setDefaultSectionSize(WIDTH)
+        self.analog_table.setFixedWidth(WIDTH*2+2)
         self.analog_table.verticalHeader().hide()
         self.analog_table.verticalHeader().setDefaultSectionSize(HEIGHT)
         self.analog_table.setFixedHeight(HEIGHT*ANALOG_ROWS+2)
@@ -163,6 +226,7 @@ class ScanFunctionSegment(QWidget):
         # Set up sizes and hide default headers
         self.digital_table.horizontalHeader().hide()
         self.digital_table.horizontalHeader().setDefaultSectionSize(WIDTH)
+        self.digital_table.setFixedWidth(WIDTH*2+2)
         self.digital_table.verticalHeader().hide()
         self.digital_table.verticalHeader().setDefaultSectionSize(HEIGHT)
         self.digital_table.setFixedHeight(HEIGHT*DIGITAL_ROWS+2)
@@ -176,157 +240,243 @@ class ScanFunctionSegment(QWidget):
             self.digital_box.addItem("True")
             self.digital_table.setCellWidget(row, 1, self.digital_box)
 
+    def convertToDictionary(self):
+        # Dictionary to hold segment parameters
+        self.segment_data = {}
+        # Write name to dictionary
+        self.segment_data['Name'] = self.name_box.text()
+        # Write duration to dictionary
+        self.segment_data['Duration'] = float(self.duration_box.text())
+
+        # Write output parameters to dictionary
+        self.segment_data['Outputs'] = []
+        for output in self.output_list:
+            self.segment_data['Outputs'].append(output.convertToDictionary())
+
+        # Read analog values from table
+        self.segment_data['Analog'] = []
+        for row in range(self.analog_table.rowCount()):
+            try:
+                self.segment_data['Analog'].append(float(self.analog_table.cellWidget(row, 1).text()))
+            except:
+                self.segment_data['Analog'].append(None)
+
+        # Read digital values from table
+        self.segment_data['Digital'] = []
+        for row in range(self.digital_table.rowCount()):
+            try:
+                self.segment_data['Digital'].append(self.digital_table.cellWidget(row, 1).currentText())
+            except:
+                self.segment_data['Digital'].append(None)
+
+        # Return segment dictionary
+        return self.segment_data
+
+    def convertFromDictionary(self, segment_data):
+        # Update name
+        self.name_box.setText(segment_data['Name'])
+        # Update duration
+        self.duration_box.setText(str(segment_data['Duration']))
+        # Update outputs
+        for output_data in segment_data['Outputs']:
+            self.output_list[segment_data['Outputs'].index(output_data)].convertFromDictionary(output_data)
+        # Update analog values
+        for row in range(self.analog_table.rowCount()):
+            self.analog_table.cellWidget(row, 1).setText(segment_data['Analog'][row])
+        # Update digital values
+        for row in range(self.digital_table.rowCount()):
+            if segment_data['Digital'][row] == 'False':
+                self.digital_table.cellWidget(row, 1).setCurrentIndex(0)
+            elif segment_data['Digital'][row] == 'True':
+                self.digital_table.cellWidget(row, 1).setCurrentIndex(1)
+
     def isChanged(self):
         self.is_changed.emit()
 
-class OutputParameterTable(QTableWidget):
-    def __init__(self):
-        super(OutputParameterTable, self).__init__()
+class OutputParameterLayout(QGridLayout):
+    def __init__(self, number):
+        super(OutputParameterLayout, self).__init__()
 
-        # Set up sizes and hide default headers
-        self.setRowCount(PARAMETER_ROWS)
-        self.setColumnCount(2)
-        self.horizontalHeader().hide()
-        self.horizontalHeader().setDefaultSectionSize(WIDTH)
-        self.verticalHeader().hide()
-        self.verticalHeader().setDefaultSectionSize(HEIGHT)
-        self.setFixedHeight(HEIGHT*PARAMETER_ROWS+2)
-        # Set up labels
-        self.setItem(0, 0, QTableWidgetItem("Type"))
-        self.setItem(1, 0, QTableWidgetItem("Start Freq"))
-        self.setItem(2, 0, QTableWidgetItem("End Freq"))
-        self.setItem(3, 0, QTableWidgetItem("Duty Cycle"))
-        self.setItem(4, 0, QTableWidgetItem("Step Res"))
-        # Make labels uneditable
-        for row in range(0, PARAMETER_ROWS):
-            self.item(row, 0).setFlags(Qt.ItemIsEnabled)
+        # Create header
+        self.header = QLabel("Output " + str(number+1))
+        self.addWidget(self.header)
 
-        # Set up type option box
-        self.type_box = QComboBox()
-        self.type_box.addItem("Fixed")
-        self.type_box.addItem("Ramp")
-        self.type_box.addItem("Mass Analysis")
-        self.type_box.addItem("Dump")
-        self.type_box.addItem("Custom")
-        self.setCellWidget(0, 1, self.type_box)
+        # Create parameters
+        self.parameter_dict = OrderedDict()
+        self.parameter_dict['Type'] = [QLabel(), QComboBox()]
+        self.parameter_dict['Start Freq'] = [QLabel(), QLineEdit()]
+        self.parameter_dict['End Freq'] = [QLabel(), QLineEdit()]
+        self.parameter_dict['Duty Cycle'] = [QLabel(), QLineEdit()]
+        self.parameter_dict['Step Res'] = [QLabel(), QLineEdit()]
+        self.parameter_dict['Tickle'] = [QLabel(), QComboBox()]
 
-        # Set up other boxes
-        for row in range(0, PARAMETER_ROWS):
-            if row is not 0:
-                self.setCellWidget(row, 1, QLineEdit())
+        self.layout_position = 1
+        for name, [label, parameter] in self.parameter_dict.items():
+            label.setText(name)
+            self.addWidget(label, self.layout_position, 0)
+            self.addWidget(parameter, self.layout_position, 1)
+            self.layout_position += 1
+
+            size_policy = QSizePolicy()
+            size_policy.setRetainSizeWhenHidden(True)
+            label.setSizePolicy(size_policy)
+            parameter.setSizePolicy(size_policy)
+
+        # Set up type options
+        self.parameter_dict['Type'][1].addItem("None")
+        self.parameter_dict['Type'][1].addItem("Fixed")
+        self.parameter_dict['Type'][1].addItem("Ramp")
+        self.parameter_dict['Type'][1].addItem("Mass Analysis")
+        self.parameter_dict['Type'][1].addItem("Dump")
+        self.parameter_dict['Type'][1].addItem("Custom")
+
+        # Set up tickle division options
+        self.parameter_dict['Tickle'][1].addItem("2")
+        self.parameter_dict['Tickle'][1].addItem("4")
+        self.parameter_dict['Tickle'][1].addItem("8")
+        self.parameter_dict['Tickle'][1].addItem("16")
 
         # Signal character for Arduino - default is 'f' for Fixed
-        self.updateType("Fixed")
+        self.updateType("None")
 
         # Trigger update segment type
-        self.type_box.activated[str].connect(self.updateType)
+        self.parameter_dict['Type'][1].activated[str].connect(self.updateType)
 
     def updateType(self, type):
-        # Ensure start and end frequencies aren't mirroring each other from previously being a fixed segment
-        try:
-            self.cellWidget(1, 1).textChanged.disconnect(self.cellWidget(2, 1).setText)
-        except:
+        if type == "None":
+            for name, [label, parameter] in self.parameter_dict.items():
+                if name is not 'Type':
+                    label.hide()
+                    parameter.hide()
+
+        elif type == "Fixed":
+            for name, [label, parameter] in self.parameter_dict.items():
+                if name in ['Type', 'Start Freq', 'Duty Cycle']:
+                    label.show()
+                    parameter.show()
+                else:
+                    label.hide()
+                    parameter.hide()
+
+        elif type == "Ramp":
+            for name, [label, parameter] in self.parameter_dict.items():
+                if name in ['Type', 'Start Freq', 'End Freq', 'Duty Cycle']:
+                    label.show()
+                    parameter.show()
+                else:
+                    label.hide()
+                    parameter.hide()
+
+        elif type == "Mass Analysis":
+            for name, [label, parameter] in self.parameter_dict.items():
+                if name in ['Type', 'Start Freq', 'End Freq', 'Duty Cycle', 'Step Res', 'Tickle']:
+                    label.show()
+                    parameter.show()
+                else:
+                    label.hide()
+                    parameter.hide()
+
+        elif type == "Dump":
+            for name, [label, parameter] in self.parameter_dict.items():
+                if name in ['Type']:
+                    label.show()
+                    parameter.show()
+                else:
+                    label.hide()
+                    parameter.hide()
+
+        elif type == "Custom":
+            for name, [label, parameter] in self.parameter_dict.items():
+                if name in ['Type']:
+                    label.show()
+                    parameter.show()
+                else:
+                    label.hide()
+                    parameter.hide()
+
+        else:
             pass
 
-        if type == "Fixed":
-            self.cellWidget(2, 1).setEnabled(False)
-            self.cellWidget(4, 1).setEnabled(False)
-            self.cellWidget(1, 1).setText("100000")
-            self.cellWidget(2, 1).setText("100000")
-            # Connect start and end frequencies in fixed segment
-            self.cellWidget(1, 1).textChanged.connect(self.cellWidget(2, 1).setText)
-            self.cellWidget(3, 1).setText("50")
-            self.cellWidget(4, 1).setText("")
-        elif type == "Ramp":
-            self.cellWidget(2, 1).setEnabled(True)
-            self.cellWidget(4, 1).setEnabled(False)
-            self.cellWidget(1, 1).setText("100000")
-            self.cellWidget(2, 1).setText("200000")
-            self.cellWidget(3, 1).setText("50")
-            self.cellWidget(4, 1).setText("")
-        elif type == "Mass Analysis":
-            self.cellWidget(2, 1).setEnabled(True)
-            self.cellWidget(4, 1).setEnabled(True)
-            self.cellWidget(1, 1).setText("400000")
-            self.cellWidget(2, 1).setText("100000")
-            self.cellWidget(3, 1).setText("50")
-            self.cellWidget(4, 1).setText("5")
-        elif type == "Dump":
-            self.cellWidget(2, 1).setEnabled(True)
-            self.cellWidget(4, 1).setEnabled(True)
-        elif type == "Custom":
-            self.cellWidget(2, 1).setEnabled(True)
-            self.cellWidget(4, 1).setEnabled(True)
+        for name, [label, parameter] in self.parameter_dict.items():
+            if parameter.isHidden():
+                try:
+                    parameter.setText(None)
+                except:
+                    pass
+
+    def convertToDictionary(self):
+        # Write output parameters to dictionary
+        self.output_data = {}
+        for name, [label, parameter] in self.parameter_dict.items():
+            if parameter.isHidden() == False:
+                try:
+                    # Most parameters have text - convert to number
+                    self.output_data[name] = float(parameter.text())
+                except:
+                    try:
+                        # Tickle division is integer
+                        self.output_data[name] = int(parameter.currentText())
+                    except:
+                        try:
+                            # Type parameter has current text
+                            self.output_data[name] = parameter.currentText()
+                        except:
+                            self.output_data[name] = None
+        # Return output dictionary
+        return self.output_data
+
+    def convertFromDictionary(self, output_data):
+        # Update parameters
+        for label, parameter_data in output_data.items():
+            try:
+                self.parameter_dict[label][1].setCurrentText(str(parameter_data))
+                self.updateType(str(parameter_data))
+            except:
+                try:
+                    self.parameter_dict[label][1].setText(str(parameter_data))
+                except:
+                    self.parameter_dict[label][1].setText(None)
 
 class ScanFunctionPlot(pg.PlotWidget):
     def __init__(self):
         super(ScanFunctionPlot, self).__init__()
 
     def generatePlotData(self, scan_function):
-        self.output1_x_values = []
-        self.output1_y_values = []
-        self.output2_x_values = []
-        self.output2_y_values = []
-        self.output3_x_values = []
-        self.output3_y_values = []
+        self.x_values = []
+        self.y_values = []
+        for output in range(3):
+            self.y_values.append([])
+
         for segment in scan_function:
             # Segment start time and frequency
             try:
-                self.output1_x_values.append(self.output1_x_values[-1])
+                self.x_values.append(self.x_values[-1])
             except:
-                self.output1_x_values.append(0)
-            try:
-                self.output2_x_values.append(self.output2_x_values[-1])
-            except:
-                self.output2_x_values.append(0)
-            try:
-                self.output3_x_values.append(self.output3_x_values[-1])
-            except:
-                self.output3_x_values.append(0)
+                self.x_values.append(0)
 
-            try:
-                self.output1_y_values.append(float(segment.output1_table.cellWidget(1, 1).text()))
-            except:
-                self.output1_y_values.append(0)
-            try:
-                self.output2_y_values.append(float(segment.output2_table.cellWidget(1, 1).text()))
-            except:
-                self.output2_y_values.append(0)
-            try:
-                self.output3_y_values.append(float(segment.output3_table.cellWidget(1, 1).text()))
-            except:
-                self.output3_y_values.append(0)
+            for output in range(len(segment.output_list)):
+                try:
+                    self.y_values[output].append(float(segment.output_list[output].parameter_dict['Start Freq'][1].text()))
+                except:
+                    self.y_values[output].append(0)
 
             # Segment end time and frequency
             try:
-                self.output1_x_values.append(float(segment.duration_box.text()) + float(self.output1_x_values[-1]))
+                self.x_values.append(float(segment.duration_box.text()) + float(self.x_values[-1]))
             except:
-                self.output1_x_values.append(0)
-            try:
-                self.output2_x_values.append(float(segment.duration_box.text()) + float(self.output2_x_values[-1]))
-            except:
-                self.output2_x_values.append(0)
-            try:
-                self.output3_x_values.append(float(segment.duration_box.text()) + float(self.output3_x_values[-1]))
-            except:
-                self.output3_x_values.append(0)
+                self.x_values.append(0)
 
-            try:
-                self.output1_y_values.append(float(segment.output1_table.cellWidget(2, 1).text()))
-            except:
-                self.output1_y_values.append(0)
-            try:
-                self.output2_y_values.append(float(segment.output2_table.cellWidget(2, 1).text()))
-            except:
-                self.output2_y_values.append(0)
-            try:
-                self.output3_y_values.append(float(segment.output3_table.cellWidget(2, 1).text()))
-            except:
-                self.output3_y_values.append(0)
+            for output in range(len(segment.output_list)):
+                if segment.output_list[output].parameter_dict['Type'][1].currentText() == "Fixed":
+                    self.y_values[output].append(self.y_values[output][-1])
+                else:
+                    try:
+                        self.y_values[output].append(float(segment.output_list[output].parameter_dict['End Freq'][1].text()))
+                    except:
+                        self.y_values[output].append(0)
 
     def updatePlot(self, scan_function):
         self.generatePlotData(scan_function)
         self.plotItem.clear()
-        self.plotItem.plot(self.output1_x_values, self.output1_y_values, pen='g')
-        self.plotItem.plot(self.output2_x_values, self.output2_y_values, pen='r')
-        self.plotItem.plot(self.output3_x_values, self.output3_y_values, pen='b')
+        for output in range(3):
+            self.plotItem.plot(self.x_values, self.y_values[output], pen=output)

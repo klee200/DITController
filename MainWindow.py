@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from ScanFunction import ScanFunction
 from Communication import *
-from DialogWindows import ConnectionDialog
+from DialogWindows import ConnectionDialog, AddRemoveSegmentDialog, CopySegmentDialog, SaveScanDialog, OpenScanDialog
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -12,7 +12,7 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__()
 
         # Create scan function object
-        self.scan_function = ScanFunction()
+        self.scan_function = ScanFunction(self)
 
         # Create splitter for left and right halves and make it the central widget
         self.main_splitter = QSplitter()
@@ -51,7 +51,7 @@ class MainWindow(QMainWindow):
         # Create axes for plot objects
         self.scan_function.scan_plot.setLabel('left', text='Frequency', units='Hz')
         self.scan_function.scan_plot.setLabel('bottom', text='Time', units='ms')
-        # Add plots to left half and hide them - tab selection shows the corresponding plot and continues to hide the other
+        # Add plot to left half and hides it
         self.left_splitter.addWidget(self.scan_function.scan_plot)
         self.scan_function.scan_plot.hide()
 
@@ -60,34 +60,42 @@ class MainWindow(QMainWindow):
         # Add button layout to right half
         self.right_layout.addLayout(self.button_layout)
         # Create buttons at locations (row, column) in grid
+        # Select frequency or m/z display
+        self.frequency_button = QRadioButton("Frequency")
+        self.button_layout.addWidget(self.frequency_button, 0, 0)
+        self.mass_button = QRadioButton("m/z")
+        self.button_layout.addWidget(self.mass_button, 0, 1)
+        # Make frequency and m/z buttons mutually exclusive
+        self.frequency_button.setChecked(True)
+        # Display select functions
+        self.frequency_button.toggled.connect(self.convertNumbers)
+        # Create label and box for conversion constant
+        self.button_layout.addWidget(QLabel("Conversion constant"), 1, 0)
+        self.conv_const_box = QLineEdit()
+        self.button_layout.addWidget(self.conv_const_box, 1, 1)
         # Add scan segment button
-        self.add_button = QPushButton("Add Segment")
-        self.button_layout.addWidget(self.add_button, 1, 1)
-        # Add scan segment button function
-        self.add_button.clicked.connect(self.addScanSegment)
-        # Remove scan segment button
-        self.remove_button = QPushButton("Remove Segment")
-        self.button_layout.addWidget(self.remove_button, 1, 2)
-        # Remove scan segment button function
-        self.remove_button.clicked.connect(self.removeScanSegment)
+        self.add_remove_button = QPushButton("Add/Remove Segments")
+        self.button_layout.addWidget(self.add_remove_button, 2, 0, 1, 2)
+        # Add/remove scan segment button function
+        self.add_remove_button.clicked.connect(lambda: AddRemoveSegmentDialog(self).open())
         # Download button
         self.download_button = QPushButton("Download Scan")
-        self.button_layout.addWidget(self.download_button, 2, 1)
+        self.button_layout.addWidget(self.download_button, 3, 0)
         # Download button function
         self.download_button.clicked.connect(self.downloadScanFunction)
         # Upload button
         self.upload_button = QPushButton("Upload Scan")
-        self.button_layout.addWidget(self.upload_button, 2, 2)
+        self.button_layout.addWidget(self.upload_button, 3, 1)
         # Upload button function
         self.upload_button.clicked.connect(self.uploadScanFunction)
         # Run button
         self.run_button = QPushButton("Run Scan")
-        self.button_layout.addWidget(self.run_button, 3, 1)
+        self.button_layout.addWidget(self.run_button, 4, 0)
         # Run button function
         self.run_button.clicked.connect(self.runScanFunction)
         # Stop button
         self.stop_button = QPushButton("Stop Scan")
-        self.button_layout.addWidget(self.stop_button, 3, 2)
+        self.button_layout.addWidget(self.stop_button, 4, 1)
         # Stop button function
         self.stop_button.clicked.connect(self.stopScanFunction)
 
@@ -99,50 +107,80 @@ class MainWindow(QMainWindow):
 
         # Create menu
         self.menuBar()
-        self.menuBar().addMenu("File")
+
+        # File menu
+        self.file_menu = self.menuBar().addMenu("File")
+        # Open scan option
+        self.open_option = self.file_menu.addAction("Open Scan")
+        self.open_option.triggered.connect(lambda: OpenScanDialog(self.scan_function))
+        # Save scan option
+        self.save_option = self.file_menu.addAction("Save Scan")
+        self.save_option.triggered.connect(lambda: SaveScanDialog(self.scan_function.convertToJson()))
+
+        # Edit menu
+        self.edit_menu = self.menuBar().addMenu("Edit")
+        # Add/remove option
+        self.add_remove_option = self.edit_menu.addAction("Add/Remove segments")
+        self.add_remove_option.triggered.connect(lambda: AddRemoveSegmentDialog(self).open())
+        # Copy segment option
+        self.copy_option = self.edit_menu.addAction("Copy segment")
+        self.copy_dialog = CopySegmentDialog(self)
+        self.copy_option.triggered.connect(self.copy_dialog.show)
+
+        # Settings menu
         self.settings_menu = self.menuBar().addMenu("Settings")
-        self.connection = self.settings_menu.addAction("Connect")
+        self.connection_option = self.settings_menu.addAction("Connect")
         # Create connection dialog box
         self.connection_dialog = ConnectionDialog(self.announcer)
         # Show dialog box when button is clicked
-        self.connection.triggered.connect(self.connection_dialog.show)
+        self.connection_option.triggered.connect(self.connection_dialog.exec)
 
-    def addScanSegment(self):
-        # Tell Scan Function object to add a new Segment object
-        self.scan_function.addSegment()
-        # Create new widget in Main Window for last segment in scan function
-        self.scan_area.widget().layout().addWidget(self.scan_function.scan_list[-1])
-        # Announce segment creation
-        self.announcer.appendPlainText("New segment added")
-
-    def removeScanSegment(self):
+    def convertNumbers(self):
         try:
-            # Remove segment widget from layout
-            self.scan_function.scan_list[-1].hide()
-            self.scan_area.widget().layout().removeWidget(self.scan_function.scan_list[-1])
-            # Tell Scan function object to remove segment object
-            self.scan_function.removeSegment()
-            # Announce segment removal
-            self.announcer.appendPlainText("Segment removed")
+            constant = float(self.conv_const_box.text())
         except:
-            # If no segment, announce error
-            self.announcer.appendPlainText("No segment to remove")
-
-    def displayScanFunctionPlot(self):
-        # Add plot to left splitter
-        self.scan_function.scan_plot.show()
+            constant = 1
+        if self.frequency_button.isChecked() == True:
+            self.scan_function.convertMassToFreq(constant)
+        elif self.mass_button.isChecked() == True:
+            self.scan_function.convertFreqToMass(constant)
 
     def downloadScanFunction(self):
-        # Convert list into json string
-        scan_function_json = convertToJson(self.scan_function)
-        self.announcer.appendPlainText(scan_function_json)
-        try:
-            # Send json string to Arduino
-            self.connection_dialog.master_serial.serialWrite('D')
-            self.connection_dialog.master_serial.serialWrite(scan_function_json + '#')
-        except:
-            # If serial write fails, signal error
-            self.announcer.appendPlainText("No serial port found")
+        # Check validity of scan function
+        self.valid_scan_function = True
+        # Count the number of mass analysis steps total
+        self.num_mass_anaylsis_segments = 0
+        for segment in self.scan_function.scan_list:
+            # Count the number of ramp outputs in each segment
+            self.num_ramps = 0
+            for output in segment.output_list:
+                if output.parameter_dict["Type"][1].currentText() == "Mass Analysis":
+                    self.num_mass_anaylsis_segments += 1
+                if output.parameter_dict["Type"][1].currentText() in ["Ramp", "Mass Analysis"]:
+                    self.num_ramps += 1
+            # If more than one ramp segment found, the scan function is invalid
+            if self.num_ramps > 1:
+                self.valid_scan_function = False
+        # Only one allowed mass analysis step in scan function
+        if self.num_mass_anaylsis_segments > 1:
+            self.valid_scan_function = False
+
+        if self.valid_scan_function == False:
+            self.announcer.appendPlainText("Invalid scan function")
+        else:
+            # Make sure that numbers are in frequency for download
+            if self.mass_button.isChecked() == True:
+                self.frequency_button.toggle()
+            # Convert list into json string
+            scan_function_json = self.scan_function.convertToJson()
+            self.announcer.appendPlainText(scan_function_json)
+            try:
+                # Send json string to Arduino
+                self.connection_dialog.master_serial.serialWrite('D')
+                self.connection_dialog.master_serial.serialWrite(scan_function_json + '#')
+            except:
+                # If serial write fails, signal error
+                self.announcer.appendPlainText("No serial port found")
 
     def uploadScanFunction(self):
         try:

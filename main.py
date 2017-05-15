@@ -5,7 +5,7 @@ from MainWindow import *
 def main():
     app = QApplication(sys.argv)
     controller_interface = MainWindow()
-    controller_interface.show()
+    controller_interface.showMaximized()
     sys.exit(app.exec_())
 
 if __name__ == '__main__':
