@@ -12,6 +12,24 @@ ANALOG_ROWS = 16
 DIGITAL_ROWS = 21
 PARAMETERS = 6
 
+def convertFreqToMass(constant, frequency):
+    try:
+        # Convert start frequencies
+        mass = str(round(float(constant)/pow(float(frequency), 2), 5))
+    except:
+        mass = frequency
+
+    return mass
+
+def convertMassToFreq(constant, mass):
+    try:
+        # Convert start m/z values
+        frequency = str(round(sqrt(float(constant)/float(mass)), 5))
+    except:
+        frequency = mass
+
+    return frequency
+
 class ScanFunction(object):
     def __init__(self, main_window):
         # Create header for scan function object
@@ -24,15 +42,45 @@ class ScanFunction(object):
         self.scan_plot = ScanFunctionPlot()
         self.main_window = main_window
 
+    def convertToMass(self, conversion_constant):
+        for segment in self.scan_list:
+            for output in segment.output_list:
+                for name, [label, parameter] in output.parameter_dict.items():
+                    if name == 'Start':
+                        output.parameter_dict['Start m/z'][1].setText(convertFreqToMass(conversion_constant, parameter.text()))
+                        if parameter.isHidden() == False:
+                            output.parameter_dict['Start m/z'][1].show()
+                        parameter.hide()
+                    elif name == 'End':
+                        output.parameter_dict['End m/z'][1].setText(convertFreqToMass(conversion_constant, parameter.text()))
+                        if parameter.isHidden() == False:
+                            output.parameter_dict['End m/z'][1].show()
+                        parameter.hide()
+
+    def convertToFrequency(self, conversion_constant):
+        for segment in self.scan_list:
+            for output in segment.output_list:
+                for name, [label, parameter] in output.parameter_dict.items():
+                    if name == 'Start m/z':
+                        output.parameter_dict['Start'][1].setText(convertMassToFreq(conversion_constant, parameter.text()))
+                        if parameter.isHidden() == False:
+                            output.parameter_dict['Start'][1].show()
+                        parameter.hide()
+                    elif name == 'End m/z':
+                        output.parameter_dict['End'][1].setText(convertMassToFreq(conversion_constant, parameter.text()))
+                        if parameter.isHidden() == False:
+                            output.parameter_dict['End'][1].show()
+                        parameter.hide()
+
     def addSegment(self, position):
         if position <= len(self.main_window.scan_function.scan_list) and position > -1:
             # Add new segment object to list
             self.new_segment = ScanFunctionSegment()
             self.scan_list.insert(position, self.new_segment)
             # Connect signal to segment object
-            self.new_segment.is_changed.connect(lambda: self.scan_plot.updatePlot(self.scan_list))
+            self.new_segment.is_changed.connect(lambda: self.scan_plot.updatePlot(self.scan_list, self.main_window.frequency_button.isChecked()))
             # Update plot
-            self.scan_plot.updatePlot(self.scan_list)
+            self.scan_plot.updatePlot(self.scan_list, self.main_window.frequency_button.isChecked())
             self.scan_plot.show()
             # Function to copy parameters from previous segment
             if position > 0:
@@ -56,46 +104,18 @@ class ScanFunction(object):
             # Remove segment object from list
             self.scan_list.remove(self.scan_list[position])
             # Update plot
-            self.scan_plot.updatePlot(self.scan_list)
+            self.scan_plot.updatePlot(self.scan_list, self.main_window.frequency_button.isChecked())
             # Announce segment removal
             self.main_window.announcer.appendPlainText("Segment removed from position " + str(position+1))
         except:
             # If no segment, announce error
             self.main_window.announcer.appendPlainText("No segment to remove")
 
-    def convertFreqToMass(self, constant):
-        for segment in self.scan_list:
-            for output in segment.output_list:
-                try:
-                    # Convert start and end frequencies
-                    omega_start = float(output.parameter_dict["Start Freq"][1].text())
-                    omega_end = float(output.parameter_dict["End Freq"][1].text())
-                    mass_to_charge_start = constant/pow(omega_start, 2)
-                    mass_to_charge_end = constant/pow(omega_end, 2)
-                    output.parameter_dict["Start Freq"][1].setText(str(round(mass_to_charge_start, 5)))
-                    output.parameter_dict["End Freq"][1].setText(str(round(mass_to_charge_end, 5)))
-                except:
-                    pass
-
-
-    def convertMassToFreq(self, constant):
-        for segment in self.scan_list:
-            for output in segment.output_list:
-                try:
-                    # Convert start and end m/z values
-                    mass_to_charge_start = float(output.parameter_dict["Start Freq"][1].text())
-                    mass_to_charge_end = float(output.parameter_dict["End Freq"][1].text())
-                    omega_start = sqrt(constant/mass_to_charge_start)
-                    omega_end = sqrt(constant/mass_to_charge_end)
-                    output.parameter_dict["Start Freq"][1].setText(str(round(omega_start, 5)))
-                    output.parameter_dict["End Freq"][1].setText(str(round(omega_end, 5)))
-                except:
-                    pass
-
     # Function for converting scan function to dictionary
     def convertToDictionary(self):
-        # Make dictionary for scan list
+        # Make dictionary for scan fucntion
         self.scan_function_dict = {}
+        # List for segments in scan function
         self.scan_function_dict['Data'] = []
         # Create list of segment parameters with name labels
         for segment in self.scan_list:
@@ -304,12 +324,21 @@ class OutputParameterLayout(QGridLayout):
         # Create parameters
         self.parameter_dict = OrderedDict()
         self.parameter_dict['Type'] = [QLabel(), QComboBox()]
-        self.parameter_dict['Start Freq'] = [QLabel(), QLineEdit()]
-        self.parameter_dict['End Freq'] = [QLabel(), QLineEdit()]
+        self.parameter_dict['Start'] = [QLabel(), QLineEdit()]
+        self.parameter_dict['Start m/z'] = [QLabel(), QLineEdit()]
+        self.parameter_dict['End'] = [QLabel(), QLineEdit()]
+        self.parameter_dict['End m/z'] = [QLabel(), QLineEdit()]
         self.parameter_dict['Duty Cycle'] = [QLabel(), QLineEdit()]
-        self.parameter_dict['Step Res'] = [QLabel(), QLineEdit()]
+        self.parameter_dict['Step'] = [QLabel(), QLineEdit()]
         self.parameter_dict['Tickle'] = [QLabel(), QComboBox()]
 
+        # Connect frequencies and m/z values for conversion
+        # self.parameter_dict['Start'][1].textChanged.connect(lambda: self.parameter_dict['Start m/z'][1].setText(convertFreqToMass(self.parameter_dict['Start'][1].text())))
+        # self.parameter_dict['Start m/z'][1].textChanged.connect(lambda: self.parameter_dict['Start'][1].setText(convertMassToFreq(self.parameter_dict['Start m/z'][1].text())))
+        # self.parameter_dict['End'][1].textChanged.connect(lambda: self.parameter_dict['End m/z'][1].setText(convertFreqToMass(self.parameter_dict['End'][1].text())))
+        # self.parameter_dict['End m/z'][1].textChanged.connect(lambda: self.parameter_dict['End'][1].setText(convertMassToFreq(self.parameter_dict['End m/z'][1].text())))
+
+        # Place widgets in layout
         self.layout_position = 1
         for name, [label, parameter] in self.parameter_dict.items():
             label.setText(name)
@@ -317,10 +346,11 @@ class OutputParameterLayout(QGridLayout):
             self.addWidget(parameter, self.layout_position, 1)
             self.layout_position += 1
 
-            size_policy = QSizePolicy()
-            size_policy.setRetainSizeWhenHidden(True)
-            label.setSizePolicy(size_policy)
-            parameter.setSizePolicy(size_policy)
+            if name not in ['Start m/z', 'End m/z']:
+                size_policy = QSizePolicy()
+                size_policy.setRetainSizeWhenHidden(True)
+                label.setSizePolicy(size_policy)
+                parameter.setSizePolicy(size_policy)
 
         # Set up type options
         self.parameter_dict['Type'][1].addItem("None")
@@ -336,7 +366,7 @@ class OutputParameterLayout(QGridLayout):
         self.parameter_dict['Tickle'][1].addItem("8")
         self.parameter_dict['Tickle'][1].addItem("16")
 
-        # Signal character for Arduino - default is 'f' for Fixed
+        # Default type for output
         self.updateType("None")
 
         # Trigger update segment type
@@ -351,7 +381,7 @@ class OutputParameterLayout(QGridLayout):
 
         elif type == "Fixed":
             for name, [label, parameter] in self.parameter_dict.items():
-                if name in ['Type', 'Start Freq', 'Duty Cycle']:
+                if name in ['Type', 'Start', 'Duty Cycle']:
                     label.show()
                     parameter.show()
                 else:
@@ -360,7 +390,7 @@ class OutputParameterLayout(QGridLayout):
 
         elif type == "Ramp":
             for name, [label, parameter] in self.parameter_dict.items():
-                if name in ['Type', 'Start Freq', 'End Freq', 'Duty Cycle']:
+                if name in ['Type', 'Start', 'End', 'Duty Cycle']:
                     label.show()
                     parameter.show()
                 else:
@@ -369,7 +399,7 @@ class OutputParameterLayout(QGridLayout):
 
         elif type == "Mass Analysis":
             for name, [label, parameter] in self.parameter_dict.items():
-                if name in ['Type', 'Start Freq', 'End Freq', 'Duty Cycle', 'Step Res', 'Tickle']:
+                if name in ['Type', 'Start', 'End', 'Duty Cycle', 'Step', 'Tickle']:
                     label.show()
                     parameter.show()
                 else:
@@ -400,7 +430,7 @@ class OutputParameterLayout(QGridLayout):
         for name, [label, parameter] in self.parameter_dict.items():
             if parameter.isHidden():
                 try:
-                    parameter.setText(None)
+                    parameter.setText("")
                 except:
                     pass
 
@@ -440,6 +470,8 @@ class OutputParameterLayout(QGridLayout):
 class ScanFunctionPlot(pg.PlotWidget):
     def __init__(self):
         super(ScanFunctionPlot, self).__init__()
+        # Create time axis label
+        self.setLabel('bottom', text='Time', units='s')
 
     def generatePlotData(self, scan_function):
         self.x_values = []
@@ -456,13 +488,13 @@ class ScanFunctionPlot(pg.PlotWidget):
 
             for output in range(len(segment.output_list)):
                 try:
-                    self.y_values[output].append(float(segment.output_list[output].parameter_dict['Start Freq'][1].text()))
+                    self.y_values[output].append(float(segment.output_list[output].parameter_dict['Start'][1].text()))
                 except:
                     self.y_values[output].append(0)
 
             # Segment end time and frequency
             try:
-                self.x_values.append(float(segment.duration_box.text()) + float(self.x_values[-1]))
+                self.x_values.append(float(segment.duration_box.text())/1000 + float(self.x_values[-1]))
             except:
                 self.x_values.append(0)
 
@@ -471,11 +503,16 @@ class ScanFunctionPlot(pg.PlotWidget):
                     self.y_values[output].append(self.y_values[output][-1])
                 else:
                     try:
-                        self.y_values[output].append(float(segment.output_list[output].parameter_dict['End Freq'][1].text()))
+                        self.y_values[output].append(float(segment.output_list[output].parameter_dict['End'][1].text()))
                     except:
                         self.y_values[output].append(0)
 
-    def updatePlot(self, scan_function):
+    def updatePlot(self, scan_function, frequency_mode):
+        if frequency_mode == True:
+            self.setLabel('left', text='Frequency', units='Hz')
+        else:
+            self.setLabel('left', text='m/z', units='Th')
+
         self.generatePlotData(scan_function)
         self.plotItem.clear()
         for output in range(3):

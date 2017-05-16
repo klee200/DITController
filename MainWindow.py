@@ -2,7 +2,7 @@ import pdb
 import serial
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
-from ScanFunction import ScanFunction
+from ScanFunction import *
 from Communication import *
 from DialogWindows import ConnectionDialog, AddRemoveSegmentDialog, CopySegmentDialog, SaveScanDialog, OpenScanDialog
 
@@ -49,8 +49,8 @@ class MainWindow(QMainWindow):
 
         # Bottom left displays plot of scan sections
         # Create axes for plot objects
-        self.scan_function.scan_plot.setLabel('left', text='Frequency', units='Hz')
-        self.scan_function.scan_plot.setLabel('bottom', text='Time', units='ms')
+        # self.scan_function.scan_plot.setLabel('left', text='Frequency', units='Hz')
+        # self.scan_function.scan_plot.setLabel('bottom', text='Time', units='ms')
         # Add plot to left half and hides it
         self.left_splitter.addWidget(self.scan_function.scan_plot)
         self.scan_function.scan_plot.hide()
@@ -65,14 +65,19 @@ class MainWindow(QMainWindow):
         self.button_layout.addWidget(self.frequency_button, 0, 0)
         self.mass_button = QRadioButton("m/z")
         self.button_layout.addWidget(self.mass_button, 0, 1)
-        # Make frequency and m/z buttons mutually exclusive
+        self.convert_buttons = QButtonGroup()
+        self.convert_buttons.addButton(self.frequency_button)
+        self.convert_buttons.addButton(self.mass_button)
+        # Initial state
         self.frequency_button.setChecked(True)
+        self.mass_button.setCheckable(False)
         # Display select functions
-        self.frequency_button.toggled.connect(self.convertNumbers)
+        self.frequency_button.toggled.connect(lambda: self.convertNumbers(self.conv_const_box.text()))
         # Create label and box for conversion constant
         self.button_layout.addWidget(QLabel("Conversion constant"), 1, 0)
         self.conv_const_box = QLineEdit()
         self.button_layout.addWidget(self.conv_const_box, 1, 1)
+        self.conv_const_box.textChanged.connect(self.setConversionState)
         # Add scan segment button
         self.add_remove_button = QPushButton("Add/Remove Segments")
         self.button_layout.addWidget(self.add_remove_button, 2, 0, 1, 2)
@@ -112,10 +117,10 @@ class MainWindow(QMainWindow):
         self.file_menu = self.menuBar().addMenu("File")
         # Open scan option
         self.open_option = self.file_menu.addAction("Open Scan")
-        self.open_option.triggered.connect(lambda: OpenScanDialog(self.scan_function))
+        self.open_option.triggered.connect(lambda: OpenScanDialog(self))
         # Save scan option
         self.save_option = self.file_menu.addAction("Save Scan")
-        self.save_option.triggered.connect(lambda: SaveScanDialog(self.scan_function.convertToJson()))
+        self.save_option.triggered.connect(lambda: SaveScanDialog(self))
 
         # Edit menu
         self.edit_menu = self.menuBar().addMenu("Edit")
@@ -135,15 +140,24 @@ class MainWindow(QMainWindow):
         # Show dialog box when button is clicked
         self.connection_option.triggered.connect(self.connection_dialog.exec)
 
-    def convertNumbers(self):
+    def setConversionState(self, constant):
         try:
-            constant = float(self.conv_const_box.text())
+            # If constant box has a number allow user to push conversion buttons
+            float(constant)
+            self.frequency_button.setCheckable(True)
+            self.mass_button.setCheckable(True)
         except:
-            constant = 1
+            # Otherwise the user cannot push buttons (based on which is already pushed)
+            if self.frequency_button.isChecked():
+                self.mass_button.setCheckable(False)
+            else:
+                self.frequency_button.setCheckable(False)
+
+    def convertNumbers(self, conversion_constant):
         if self.frequency_button.isChecked() == True:
-            self.scan_function.convertMassToFreq(constant)
+            self.scan_function.convertToFrequency(conversion_constant)
         elif self.mass_button.isChecked() == True:
-            self.scan_function.convertFreqToMass(constant)
+            self.scan_function.convertToMass(conversion_constant)
 
     def downloadScanFunction(self):
         # Check validity of scan function

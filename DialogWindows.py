@@ -4,9 +4,12 @@ from Communication import SerialPort
 import pdb
 
 class OpenScanDialog(QFileDialog):
-    def __init__(self, scan_function):
+    def __init__(self, main_window):
         super(OpenScanDialog, self).__init__()
         try:
+            # Make sure mode is set to frequency
+            if main_window.mass_button.isChecked() == True:
+                main_window.frequency_button.setChecked(True)
             # Get file name from text box
             self.file_name = self.getOpenFileName(filter='Scan Files (*.mcl);;Text Files (*.txt)')[0]
             # Open file for reading
@@ -14,20 +17,23 @@ class OpenScanDialog(QFileDialog):
             # Read data from file
             self.scan_funciton_data = self.file.read()
             # Generate scan function from read data
-            scan_function.convertFromJson(self.scan_funciton_data)
+            main_window.scan_function.convertFromJson(self.scan_funciton_data)
         except:
             pass
 
 class SaveScanDialog(QFileDialog):
-    def __init__(self, scan_function_data):
+    def __init__(self, main_window):
         super(SaveScanDialog, self).__init__()
         try:
+            # Make sure mode is set to frequency
+            if main_window.mass_button.isChecked() == True:
+                main_window.frequency_button.setChecked(True)
             # Get file name from text box
             self.file_name = self.getSaveFileName(filter='Scan Files (*.mcl);;Text Files (*.txt)')[0]
             # Create file for writing
             self.file = open(self.file_name, 'w')
             # Write json to file
-            self.file.write(scan_function_data)
+            self.file.write(main_window.scan_function.convertToJson())
             self.file.close()
         except:
             pass
