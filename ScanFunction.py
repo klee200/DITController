@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
+from PyQt5.QtGui import *
 from collections import OrderedDict
 from math import *
 import pyqtgraph as pg
@@ -36,6 +37,13 @@ class ScanFunction(object):
         # self.header = ScanFunctionHeader()
         # Create list for holding segment objects
         self.scan_list = []
+        # Create digital labels used to save digital output names
+        self.analog_labels = []
+        for row in range(ANALOG_ROWS):
+            self.analog_labels.append("A" + str(row+1))
+        self.digital_labels = []
+        for row in range(DIGITAL_ROWS):
+            self.digital_labels.append("D" + str(row+1))
         # Create updating plot object
         pg.setConfigOption('background', 'w')
         pg.setConfigOption('foreground', 'k')
@@ -47,35 +55,35 @@ class ScanFunction(object):
             for output in segment.output_list:
                 for name, [label, parameter] in output.parameter_dict.items():
                     if name == 'Start':
-                        output.parameter_dict['Start m/z'][1].setText(convertFreqToMass(conversion_constant, parameter.text()))
-                        if parameter.isHidden() == False:
-                            output.parameter_dict['Start m/z'][1].show()
-                        parameter.hide()
+                        output.parameter_dict['Start'][1].setText(convertFreqToMass(conversion_constant, parameter.text()))
+                        # if parameter.isHidden() == False:
+                        #     output.parameter_dict['Start m/z'][1].show()
+                        # parameter.hide()
                     elif name == 'End':
-                        output.parameter_dict['End m/z'][1].setText(convertFreqToMass(conversion_constant, parameter.text()))
-                        if parameter.isHidden() == False:
-                            output.parameter_dict['End m/z'][1].show()
-                        parameter.hide()
+                        output.parameter_dict['End'][1].setText(convertFreqToMass(conversion_constant, parameter.text()))
+                        # if parameter.isHidden() == False:
+                        #     output.parameter_dict['End m/z'][1].show()
+                        # parameter.hide()
 
     def convertToFrequency(self, conversion_constant):
         for segment in self.scan_list:
             for output in segment.output_list:
                 for name, [label, parameter] in output.parameter_dict.items():
-                    if name == 'Start m/z':
+                    if name == 'Start':
                         output.parameter_dict['Start'][1].setText(convertMassToFreq(conversion_constant, parameter.text()))
-                        if parameter.isHidden() == False:
-                            output.parameter_dict['Start'][1].show()
-                        parameter.hide()
-                    elif name == 'End m/z':
+                        # if parameter.isHidden() == False:
+                        #     output.parameter_dict['Start'][1].show()
+                        # parameter.hide()
+                    elif name == 'End':
                         output.parameter_dict['End'][1].setText(convertMassToFreq(conversion_constant, parameter.text()))
-                        if parameter.isHidden() == False:
-                            output.parameter_dict['End'][1].show()
-                        parameter.hide()
+                        # if parameter.isHidden() == False:
+                        #     output.parameter_dict['End'][1].show()
+                        # parameter.hide()
 
     def addSegment(self, position):
         if position <= len(self.main_window.scan_function.scan_list) and position > -1:
             # Add new segment object to list
-            self.new_segment = ScanFunctionSegment()
+            self.new_segment = ScanFunctionSegment(self.analog_labels, self.digital_labels)
             self.scan_list.insert(position, self.new_segment)
             # Connect signal to segment object
             self.new_segment.is_changed.connect(lambda: self.scan_plot.updatePlot(self.scan_list, self.main_window.frequency_button.isChecked()))
@@ -111,10 +119,24 @@ class ScanFunction(object):
             # If no segment, announce error
             self.main_window.announcer.appendPlainText("No segment to remove")
 
+    def updateLabels(self, new_analog_labels, new_digital_labels):
+        # Update list of labels
+        self.analog_labels = new_analog_labels
+        self.digital_labels = new_digital_labels
+        # Change analog and digital labels
+        for segment in self.scan_list:
+            for row in range(ANALOG_ROWS):
+                segment.analog_table.item(row, 0).setText(new_analog_labels[row])
+            for row in range(DIGITAL_ROWS):
+                segment.digital_table.item(row, 0).setText(new_digital_labels[row])
+
     # Function for converting scan function to dictionary
     def convertToDictionary(self):
         # Make dictionary for scan fucntion
         self.scan_function_dict = {}
+        # Write labels to dictionary
+        self.scan_function_dict['Analog Labels'] = self.analog_labels
+        self.scan_function_dict['Digital Labels'] = self.digital_labels
         # List for segments in scan function
         self.scan_function_dict['Data'] = []
         # Create list of segment parameters with name labels
@@ -138,6 +160,8 @@ class ScanFunction(object):
         self.convertFromDictionary(json.loads(scan_function_json))
 
     def convertFromDictionary(self, scan_function_data):
+        # Update labels
+        self.updateLabels(scan_function_data['Analog Labels'], scan_function_data['Digital Labels'])
         # Make segments
         for segment_data in scan_function_data['Data']:
             self.addSegment(len(self.scan_list)).convertFromDictionary(segment_data)
@@ -185,7 +209,7 @@ class ScanFunctionSegment(QWidget):
     # Signal for updating plot
     is_changed = pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, analog_labels, digital_labels):
         super(ScanFunctionSegment, self).__init__()
         # Create layout for segment
         self.segment_layout = QVBoxLayout()
@@ -251,8 +275,12 @@ class ScanFunctionSegment(QWidget):
         self.digital_table.verticalHeader().setDefaultSectionSize(HEIGHT)
         self.digital_table.setFixedHeight(HEIGHT*DIGITAL_ROWS+2)
         # Set up labels
-        for row in range(0, DIGITAL_ROWS):
-            self.digital_table.setItem(row, 0, QTableWidgetItem("D" + str(row+1)))
+        for row in range(ANALOG_ROWS):
+            self.analog_table.setItem(row, 0, QTableWidgetItem(analog_labels[row]))
+            self.analog_table.item(row, 0).setFlags(Qt.ItemIsSelectable)
+        for row in range(DIGITAL_ROWS):
+            self.digital_table.setItem(row, 0, QTableWidgetItem(digital_labels[row]))
+            self.digital_table.item(row, 0).setFlags(Qt.ItemIsSelectable)
         # Set up boxes
         for row in range(DIGITAL_ROWS):
             self.digital_box = QComboBox()
@@ -325,18 +353,12 @@ class OutputParameterLayout(QGridLayout):
         self.parameter_dict = OrderedDict()
         self.parameter_dict['Type'] = [QLabel(), QComboBox()]
         self.parameter_dict['Start'] = [QLabel(), QLineEdit()]
-        self.parameter_dict['Start m/z'] = [QLabel(), QLineEdit()]
+        # self.parameter_dict['Start m/z'] = [QLabel(), QLineEdit()]
         self.parameter_dict['End'] = [QLabel(), QLineEdit()]
-        self.parameter_dict['End m/z'] = [QLabel(), QLineEdit()]
+        # self.parameter_dict['End m/z'] = [QLabel(), QLineEdit()]
         self.parameter_dict['Duty Cycle'] = [QLabel(), QLineEdit()]
         self.parameter_dict['Step'] = [QLabel(), QLineEdit()]
         self.parameter_dict['Tickle'] = [QLabel(), QComboBox()]
-
-        # Connect frequencies and m/z values for conversion
-        # self.parameter_dict['Start'][1].textChanged.connect(lambda: self.parameter_dict['Start m/z'][1].setText(convertFreqToMass(self.parameter_dict['Start'][1].text())))
-        # self.parameter_dict['Start m/z'][1].textChanged.connect(lambda: self.parameter_dict['Start'][1].setText(convertMassToFreq(self.parameter_dict['Start m/z'][1].text())))
-        # self.parameter_dict['End'][1].textChanged.connect(lambda: self.parameter_dict['End m/z'][1].setText(convertFreqToMass(self.parameter_dict['End'][1].text())))
-        # self.parameter_dict['End m/z'][1].textChanged.connect(lambda: self.parameter_dict['End'][1].setText(convertMassToFreq(self.parameter_dict['End m/z'][1].text())))
 
         # Place widgets in layout
         self.layout_position = 1
@@ -346,11 +368,11 @@ class OutputParameterLayout(QGridLayout):
             self.addWidget(parameter, self.layout_position, 1)
             self.layout_position += 1
 
-            if name not in ['Start m/z', 'End m/z']:
-                size_policy = QSizePolicy()
-                size_policy.setRetainSizeWhenHidden(True)
-                label.setSizePolicy(size_policy)
-                parameter.setSizePolicy(size_policy)
+            # if name not in ['Start m/z', 'End m/z']:
+            size_policy = QSizePolicy()
+            size_policy.setRetainSizeWhenHidden(True)
+            label.setSizePolicy(size_policy)
+            parameter.setSizePolicy(size_policy)
 
         # Set up type options
         self.parameter_dict['Type'][1].addItem("None")
@@ -478,6 +500,9 @@ class ScanFunctionPlot(pg.PlotWidget):
         self.y_values = []
         for output in range(3):
             self.y_values.append([])
+        self.digital_values = []
+        for digital in range(21):
+            self.digital_values.append([])
 
         for segment in scan_function:
             # Segment start time and frequency

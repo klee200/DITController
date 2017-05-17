@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from Communication import SerialPort
+from ScanFunction import *
 import pdb
 
 class OpenScanDialog(QFileDialog):
@@ -156,3 +157,48 @@ class CopySegmentDialog(QDialog):
         new_segment = main_window.scan_function.addSegment(paste_position)
         # Copy parameters from copy position
         new_segment.convertFromDictionary(main_window.scan_function.scan_list[copy_position].convertToDictionary())
+
+class EditAnaDigLabelsDialog(QDialog):
+    def __init__(self, main_window):
+        super(EditAnaDigLabelsDialog, self).__init__()
+        # List that holds labels
+        self.analog_labels = []
+        self.digital_labels = []
+        # Make layout
+        self.setLayout(QGridLayout())
+        # Create two tables
+        self.analog_table = QTableWidget(ANALOG_ROWS, 1)
+        self.analog_table.horizontalHeader().hide()
+        self.analog_table.horizontalHeader().setDefaultSectionSize(WIDTH)
+        self.analog_table.setFixedWidth(WIDTH+2)
+        self.analog_table.verticalHeader().hide()
+        self.analog_table.verticalHeader().setDefaultSectionSize(HEIGHT)
+        self.layout().addWidget(self.analog_table, 0, 0)
+        self.digital_table = QTableWidget(DIGITAL_ROWS, 1)
+        self.digital_table.horizontalHeader().hide()
+        self.digital_table.horizontalHeader().setDefaultSectionSize(WIDTH)
+        self.digital_table.setFixedWidth(WIDTH+2)
+        self.digital_table.verticalHeader().hide()
+        self.digital_table.verticalHeader().setDefaultSectionSize(HEIGHT)
+        self.layout().addWidget(self.digital_table, 0, 1)
+        # Create buttons
+        self.ok_button = QPushButton("Ok")
+        self.layout().addWidget(self.ok_button, 1, 0)
+        self.cancel_button = QPushButton("Cancel")
+        self.layout().addWidget(self.cancel_button, 1, 1)
+        # Button functions
+        self.ok_button.clicked.connect(lambda: self.updateAnaDigLabels(main_window))
+        self.cancel_button.clicked.connect(self.close)
+        # Pull names from scan function labels
+        for row in range(ANALOG_ROWS):
+            self.analog_table.setItem(row, 0, QTableWidgetItem(main_window.scan_function.analog_labels[row]))
+        for row in range(DIGITAL_ROWS):
+            self.digital_table.setItem(row, 0, QTableWidgetItem(main_window.scan_function.digital_labels[row]))
+
+    def updateAnaDigLabels(self, main_window):
+        for row in range(ANALOG_ROWS):
+            self.analog_labels.append(self.analog_table.item(row, 0).text())
+        for row in range(DIGITAL_ROWS):
+            self.digital_labels.append(self.digital_table.item(row, 0).text())
+        main_window.scan_function.updateLabels(self.analog_labels, self.digital_labels)
+        self.close()

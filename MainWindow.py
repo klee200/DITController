@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from ScanFunction import *
 from Communication import *
-from DialogWindows import ConnectionDialog, AddRemoveSegmentDialog, CopySegmentDialog, SaveScanDialog, OpenScanDialog
+from DialogWindows import *
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -48,9 +48,6 @@ class MainWindow(QMainWindow):
         self.left_splitter.addWidget(self.scan_area)
 
         # Bottom left displays plot of scan sections
-        # Create axes for plot objects
-        # self.scan_function.scan_plot.setLabel('left', text='Frequency', units='Hz')
-        # self.scan_function.scan_plot.setLabel('bottom', text='Time', units='ms')
         # Add plot to left half and hides it
         self.left_splitter.addWidget(self.scan_function.scan_plot)
         self.scan_function.scan_plot.hide()
@@ -131,6 +128,9 @@ class MainWindow(QMainWindow):
         self.copy_option = self.edit_menu.addAction("Copy segment")
         self.copy_dialog = CopySegmentDialog(self)
         self.copy_option.triggered.connect(self.copy_dialog.show)
+        # Edit analog and digital labels
+        self.labels_option = self.edit_menu.addAction("Edit labels")
+        self.labels_option.triggered.connect(lambda: EditAnaDigLabelsDialog(self).exec())
 
         # Settings menu
         self.settings_menu = self.menuBar().addMenu("Settings")
