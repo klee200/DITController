@@ -131,6 +131,9 @@ class MainWindow(QMainWindow):
         # Edit analog and digital labels
         self.labels_option = self.edit_menu.addAction("Edit labels")
         self.labels_option.triggered.connect(lambda: EditAnaDigLabelsDialog(self).exec())
+        # Edit conversion constant
+        self.calculator_option = self.edit_menu.addAction("Calculator")
+        self.calculator_option.triggered.connect(lambda: CalculatorDialog(self).open())
 
         # Settings menu
         self.settings_menu = self.menuBar().addMenu("Settings")
@@ -170,10 +173,15 @@ class MainWindow(QMainWindow):
             for output in segment.output_list:
                 if output.parameter_dict["Type"][1].currentText() == "Mass Analysis":
                     self.num_mass_anaylsis_segments += 1
-                if output.parameter_dict["Type"][1].currentText() in ["Ramp", "Mass Analysis"]:
+                if output.parameter_dict["Type"][1].currentText() in ["Ramp", "Mass Analysis", "Isolation"]:
                     self.num_ramps += 1
+            # Count the number of output 3 special functions
+            self.num_special = 0
+            for output in segment.output_list:
+                if output.parameter_dict["Type"][1].currentText() in ["CID", "Isolation"]:
+                    self.num_special += 1
             # If more than one ramp segment found, the scan function is invalid
-            if self.num_ramps > 1:
+            if self.num_ramps > 1 or self.num_special > 1:
                 self.valid_scan_function = False
         # Only one allowed mass analysis step in scan function
         if self.num_mass_anaylsis_segments > 1:

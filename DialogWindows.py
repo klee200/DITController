@@ -202,3 +202,107 @@ class EditAnaDigLabelsDialog(QDialog):
             self.digital_labels.append(self.digital_table.item(row, 0).text())
         main_window.scan_function.updateLabels(self.analog_labels, self.digital_labels)
         self.close()
+
+class CalculatorDialog(QDialog):
+    def __init__(self, main_window):
+        super(CalculatorDialog, self).__init__()
+        # Make layout
+        self.setLayout(QGridLayout())
+        # Make labels and boxes
+        self.layout().addWidget(QLabel("r\u2080 (cm)"), 0, 0)
+        self.r_box = QLineEdit("1.0")
+        self.layout().addWidget(self.r_box, 0, 1)
+        self.layout().addWidget(QLabel("z\u2080 (cm)"), 1, 0)
+        self.z_box = QLineEdit("0.707")
+        self.layout().addWidget(self.z_box, 1, 1)
+        self.layout().addWidget(QLabel("High V (V)"), 0, 2)
+        self.high_v_box = QLineEdit("500")
+        self.layout().addWidget(self.high_v_box, 0, 3)
+        self.layout().addWidget(QLabel("Low V (V)"), 1, 2)
+        self.low_v_box = QLineEdit("-500")
+        self.layout().addWidget(self.low_v_box, 1, 3)
+        self.layout().addWidget(QLabel("Duty Cycle (0 - 1)"), 2, 2)
+        self.d_box = QLineEdit("0.5")
+        self.layout().addWidget(self.d_box, 2, 3)
+        self.layout().addWidget(QLabel("a"), 0, 4)
+        self.a_z_box = QLineEdit("0")
+        self.layout().addWidget(self.a_z_box, 0, 5)
+        self.layout().addWidget(QLabel("q"), 1, 4)
+        self.q_z_box = QLineEdit("0.712")
+        self.layout().addWidget(self.q_z_box, 1, 5)
+        # Make horizontal line
+        self.line = QFrame()
+        self.line.setFrameShape(QFrame.HLine)
+        self.layout().addWidget(self.line, 3, 0, 1, 6)
+        # Make m/z and frequency boxes
+        self.layout().addWidget(QLabel("Frequency (Hz)"), 4, 0)
+        self.frequency_box = QLineEdit()
+        self.layout().addWidget(self.frequency_box, 4, 1)
+        self.layout().addWidget(QLabel("m/z"), 4, 2)
+        self.mass_box = QLineEdit()
+        self.layout().addWidget(self.mass_box, 4, 3)
+        # Make conversion constant box
+        self.layout().addWidget(QLabel("Conversion constant"), 4, 4)
+        self.conv_const_box = QLineEdit()
+        self.layout().addWidget(self.conv_const_box, 4, 5)
+        self.button = QPushButton("Copy constant")
+        self.layout().addWidget(self.button, 5, 5)
+        self.button.clicked.connect(lambda: main_window.conv_const_box.setText(self.conv_const_box.text()))
+
+        # Connect az and qz boxes
+        # self.a_z_box.textEdited.connect(self.calculateQz)
+        self.q_z_box.textEdited.connect(self.calculateAz)
+        self.q_z_box.textEdited.connect(self.calculateConvConstant)
+        # Connect frequency and m/z boxes
+        self.frequency_box.textEdited.connect(self.calculateMass)
+        self.mass_box.textEdited.connect(self.calculateFrequency)
+
+    def calculateQz(self, a_z):
+        # Calculate U and V
+        try:
+            U = float(self.d_box.text()) * float(self.high_v_box.text()) + (1 - float(self.d_box.text())) * float(self.low_v_box.text())
+            V = 2 * (float(self.high_v_box.text()) - float(self.low_v_box.text())) * (1 - float(self.d_box.text())) * float(self.d_box.text())
+            q_z = str(-1 * float(a_z) * V / 2 / U)
+        except:
+            q_z = None
+
+        self.q_z_box.setText(q_z)
+
+    def calculateAz(self, q_z):
+        # Calculate U and V
+        try:
+            U = float(self.d_box.text()) * float(self.high_v_box.text()) + (1 - float(self.d_box.text())) * float(self.low_v_box.text())
+            V = 2 * (float(self.high_v_box.text()) - float(self.low_v_box.text())) * (1 - float(self.d_box.text())) * float(self.d_box.text())
+            a_z = str(-1 * float(q_z) * 2* U / V)
+        except:
+            a_z = None
+
+        self.a_z_box.setText(a_z)
+
+    def calculateMass(self, frequency):
+        # m/z = 8*e*V/(r^2+2z^2)/frequency^2/qz
+        try:
+            V = 2 * (float(self.high_v_box.text()) - float(self.low_v_box.text())) * (1 - float(self.d_box.text())) * float(self.d_box.text())
+            mass = str(8 * 1.602e-19 * V / (pow(float(self.r_box.text())/100, 2) + 2 * pow(float(self.z_box.text())/100, 2)) / pow(float(frequency)*2*pi, 2) / float(self.q_z_box.text()) / 1.66e-27)
+        except:
+            mass = None
+
+        self.mass_box.setText(mass)
+
+    def calculateFrequency(self, mass):
+        try:
+            V = 2 * (float(self.high_v_box.text()) - float(self.low_v_box.text())) * (1 - float(self.d_box.text())) * float(self.d_box.text())
+            frequency = str(sqrt(8 * 1.602e-19 * V / (pow(float(self.r_box.text())/100, 2) + 2 * pow(float(self.z_box.text())/100, 2)) / float(mass) / float(self.q_z_box.text()) / 1.66e-27)/2/pi)
+        except:
+            frequency = None
+
+        self.frequency_box.setText(frequency)
+
+    def calculateConvConstant(self, q_z):
+        try:
+            V = 2 * (float(self.high_v_box.text()) - float(self.low_v_box.text())) * (1 - float(self.d_box.text())) * float(self.d_box.text())
+            constant = str((8 * 1.602e-19 * V / (pow(float(self.r_box.text())/100, 2) + 2 * pow(float(self.z_box.text())/100, 2)) / float(q_z) / 1.66e-27)/pow(2*pi, 2))
+        except:
+            constant = None
+
+        self.conv_const_box.setText(constant)
