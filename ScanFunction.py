@@ -7,15 +7,15 @@ import pyqtgraph as pg
 import json
 import pdb
 
-WIDTH = 90
+WIDTH = 95
 HEIGHT = 24
-ANALOG_ROWS = 16
+ANALOG_ROWS = 8
 DIGITAL_ROWS = 12
 # PARAMETERS = 8
 
 def convertFreqToMass(constant, frequency):
     try:
-        # Convert start frequencies
+        # Convert frequencies
         mass = str(round(float(constant)/pow(float(frequency), 2), 5))
     except:
         mass = frequency
@@ -24,7 +24,7 @@ def convertFreqToMass(constant, frequency):
 
 def convertMassToFreq(constant, mass):
     try:
-        # Convert start m/z values
+        # Convert m/z values
         frequency = str(round(sqrt(float(constant)/float(mass)), 5))
     except:
         frequency = mass
@@ -50,21 +50,35 @@ class ScanFunction(object):
         self.scan_plot = ScanFunctionPlot()
         self.main_window = main_window
 
-    def convertToMass(self, conversion_constant):
+    def convertToMass(self, drive_constant, tickle_constant):
         for segment in self.scan_list:
             for output in segment.output_list:
                 for name, [label, parameter] in output.parameter_dict.items():
                     if name in ['Start', 'End']:
-                        label.setText(name)
-                        output.parameter_dict[name][1].setText(convertFreqToMass(conversion_constant, parameter.text()))
+                        label.setText(name + " (m/z)")
+                        parameter.setText(convertFreqToMass(drive_constant, parameter.text()))
+                try:
+                    for name, [label, parameter] in output.tickle_layout.tickle_dict.items():
+                        if name in ['Start', 'End']:
+                            label.setText(name + " (m/z)")
+                            parameter.setText(convertFreqToMass(tickle_constant, parameter.text()))
+                except:
+                    pass
 
-    def convertToFrequency(self, conversion_constant):
+    def convertToFrequency(self, drive_constant, tickle_constant):
         for segment in self.scan_list:
             for output in segment.output_list:
                 for name, [label, parameter] in output.parameter_dict.items():
                     if name in ['Start', 'End']:
                         label.setText(name + " (Hz)")
-                        output.parameter_dict[name][1].setText(convertMassToFreq(conversion_constant, parameter.text()))
+                        parameter.setText(convertMassToFreq(drive_constant, parameter.text()))
+                try:
+                    for name, [label, parameter] in output.tickle_layout.tickle_dict.items():
+                        if name in ['Start', 'End']:
+                            label.setText(name + " (Hz)")
+                            parameter.setText(convertMassToFreq(tickle_constant, parameter.text()))
+                except:
+                    pass
 
     def addSegment(self, position):
         if position <= len(self.main_window.scan_function.scan_list) and position > -1:
@@ -100,6 +114,9 @@ class ScanFunction(object):
             self.scan_list.remove(self.scan_list[position])
             # Update plot
             self.scan_plot.updatePlot(self.scan_list, self.main_window.frequency_button.isChecked())
+            # Fix segment numbering
+            for segment in range(position, len(self.main_window.scan_function.scan_list)):
+                self.scan_list[segment].updatePosition(segment+1)
             # Announce segment removal
             self.main_window.announcer.appendPlainText("Segment removed from position " + str(position+1))
         except:
@@ -117,9 +134,9 @@ class ScanFunction(object):
             for row in range(DIGITAL_ROWS):
                 segment.digital_table.item(row, 0).setText(new_digital_labels[row])
 
+        # Make dictionary for scan fucntion
     # Function for converting scan function to dictionary
     def convertToDictionary(self):
-        # Make dictionary for scan fucntion
         self.scan_function_dict = {}
         # Write labels to dictionary
         self.scan_function_dict['Analog Labels'] = self.analog_labels
@@ -211,14 +228,17 @@ class ScanFunctionSegment(QWidget):
         # Create label and box for name
         self.name_label = QLabel("Name")
         self.name_box = QLineEdit()
+        self.name_label.setFixedWidth(WIDTH)
+        self.name_box.setFixedWidth(WIDTH)
         self.name_layout = QHBoxLayout()
         self.name_layout.addWidget(self.name_label)
         self.name_layout.addWidget(self.name_box)
         self.segment_layout.addLayout(self.name_layout)
 
         # Create label and box for duration
-        self.duration_label = QLabel("Duration")
+        self.duration_label = QLabel("Duration (ms)")
         self.duration_box = QLineEdit("10")
+        self.duration_label.setFixedWidth(WIDTH)
         self.duration_box.setFixedWidth(WIDTH)
         self.duration_box.textChanged.connect(self.isChanged)
         self.duration_layout = QHBoxLayout()
@@ -250,7 +270,8 @@ class ScanFunctionSegment(QWidget):
         self.analog_table.setFixedHeight(HEIGHT*ANALOG_ROWS+2)
         # Set up labels
         for row in range(ANALOG_ROWS):
-            self.analog_table.setItem(row, 0, QTableWidgetItem("A" + str(row+1)))
+            self.analog_table.setItem(row, 0, QTableWidgetItem(analog_labels[row]))
+            self.analog_table.item(row, 0).setFlags(Qt.ItemIsSelectable)
         # Set up boxes
         for row in range(ANALOG_ROWS):
             self.analog_table.setCellWidget(row, 1, QLineEdit())
@@ -267,9 +288,6 @@ class ScanFunctionSegment(QWidget):
         self.digital_table.verticalHeader().setDefaultSectionSize(HEIGHT)
         self.digital_table.setFixedHeight(HEIGHT*DIGITAL_ROWS+2)
         # Set up labels
-        for row in range(ANALOG_ROWS):
-            self.analog_table.setItem(row, 0, QTableWidgetItem(analog_labels[row]))
-            self.analog_table.item(row, 0).setFlags(Qt.ItemIsSelectable)
         for row in range(DIGITAL_ROWS):
             self.digital_table.setItem(row, 0, QTableWidgetItem(digital_labels[row]))
             self.digital_table.item(row, 0).setFlags(Qt.ItemIsSelectable)
@@ -279,9 +297,17 @@ class ScanFunctionSegment(QWidget):
             self.digital_box.addItem("False")
             self.digital_box.addItem("True")
             self.digital_table.setCellWidget(row, 1, self.digital_box)
+            self.digital_table.cellWidget(row, 1).currentTextChanged.connect(self.colorDigitalBox)
 
     def updatePosition(self, position):
         self.position_label.setText(str(position))
+
+    def colorDigitalBox(self):
+        for row in range(DIGITAL_ROWS):
+            if self.digital_table.cellWidget(row, 1).currentText() == 'True':
+                self.digital_table.item(row, 0).setBackground(QBrush(QColor(0, 255, 0)))
+            else:
+                self.digital_table.item(row, 0).setBackground(QBrush(QColor(255, 255, 255)))
 
     def convertToDictionary(self):
         # Dictionary to hold segment parameters
@@ -325,7 +351,7 @@ class ScanFunctionSegment(QWidget):
             self.output_list[output_data_index].convertFromDictionary(segment_data['Outputs'][output_data_index])
         # Update analog values
         for row in range(self.analog_table.rowCount()):
-            self.analog_table.cellWidget(row, 1).setText(segment_data['Analog'][row])
+            self.analog_table.cellWidget(row, 1).setText(str(segment_data['Analog'][row]))
         # Update digital values
         for row in range(self.digital_table.rowCount()):
             if segment_data['Digital'][row] == 'False':
@@ -341,35 +367,31 @@ class OutputParameterLayout(QGridLayout):
         super(OutputParameterLayout, self).__init__()
 
         # Create header
-        if number == 2:
-            self.header = QLabel("Supplementary Tickle")
-        else:
-            self.header = QLabel("Output " + str(number+1))
-        self.addWidget(self.header, 0, 0, 1, 2)
+        self.line = QFrame()
+        self.line.setFrameShape(QFrame.HLine)
+        self.addWidget(self.line, 0, 0, 1, 2)
+        self.header = QLabel("Output " + str(number+1))
+        self.addWidget(self.header, 1, 0, 1, 2)
 
         # Create parameters
         self.parameter_dict = OrderedDict()
         self.parameter_dict['Type'] = [QLabel(), QComboBox()]
         self.parameter_dict['Start'] = [QLabel(), QLineEdit()]
-        # self.parameter_dict['Start m/z'] = [QLabel(), QLineEdit()]
         self.parameter_dict['End'] = [QLabel(), QLineEdit()]
-        # self.parameter_dict['End m/z'] = [QLabel(), QLineEdit()]
         self.parameter_dict['Duty Cycle'] = [QLabel(), QLineEdit()]
-        self.parameter_dict['Step'] = [QLabel(), QLineEdit()]
         self.parameter_dict['Eject at beta'] = [QLabel(), QComboBox()]
         self.parameter_dict['Tickle Voltage'] = [QLabel(), QLineEdit()]
         self.parameter_dict['Tickle Phase'] = [QLabel(), QComboBox()]
-        self.parameter_dict['Tickle Output'] = [QLabel(), QComboBox()]
 
         # Place widgets in layout
-        self.layout_position = 1
+        self.layout_position = 2
         for name, [label, parameter] in self.parameter_dict.items():
             if name in ['Start', 'End']:
                 label.setText(name + " (Hz)")
-            elif name == 'Step':
-                label.setText(name + " (ps)")
             else:
                 label.setText(name)
+            label.setFixedWidth(WIDTH)
+            parameter.setFixedWidth(WIDTH)
             self.addWidget(label, self.layout_position, 0)
             self.addWidget(parameter, self.layout_position, 1)
             self.layout_position += 1
@@ -379,18 +401,21 @@ class OutputParameterLayout(QGridLayout):
             label.setSizePolicy(size_policy)
             parameter.setSizePolicy(size_policy)
 
-        # Set up type options
+        # Create supplementary tickle layout
         if number is not 2:
-            self.parameter_dict['Type'][1].addItem("None")
-            self.parameter_dict['Type'][1].addItem("Fixed")
-            self.parameter_dict['Type'][1].addItem("Ramp")
-            self.parameter_dict['Type'][1].addItem("Mass Analysis")
-            self.parameter_dict['Type'][1].addItem("Dump")
-            self.parameter_dict['Type'][1].addItem("Custom")
+            self.tickle_layout = SupplementaryTickleLayout()
+            self.addWidget(self.tickle_layout, 10, 0, 1, 2)
+
+        # Set up type options
+        self.parameter_dict['Type'][1].addItem("None")
+        self.parameter_dict['Type'][1].addItem("Fixed")
+        self.parameter_dict['Type'][1].addItem("Ramp")
+        self.parameter_dict['Type'][1].addItem("Mass Analysis")
+        self.parameter_dict['Type'][1].addItem("Dump")
+        self.parameter_dict['Type'][1].addItem("Custom")
 
         # Output 3 special options
-        if number is 2:
-            self.parameter_dict['Type'][1].addItem("None")
+        if number is not 2:
             self.parameter_dict['Type'][1].addItem("CID")
             self.parameter_dict['Type'][1].addItem("Isolation")
 
@@ -404,10 +429,6 @@ class OutputParameterLayout(QGridLayout):
         self.parameter_dict['Eject at beta'][1].addItem("0.25")
         self.parameter_dict['Eject at beta'][1].addItem("0.125")
 
-        # Tickle output options
-        self.parameter_dict['Tickle Output'][1].addItem("1")
-        self.parameter_dict['Tickle Output'][1].addItem("2")
-
         # Default type for output
         self.updateType("None")
 
@@ -420,6 +441,10 @@ class OutputParameterLayout(QGridLayout):
                 if name is not 'Type':
                     label.hide()
                     parameter.hide()
+            try:
+                self.tickle_layout.hide()
+            except:
+                pass
 
         elif type == "Fixed":
             for name, [label, parameter] in self.parameter_dict.items():
@@ -429,6 +454,10 @@ class OutputParameterLayout(QGridLayout):
                 else:
                     label.hide()
                     parameter.hide()
+            try:
+                self.tickle_layout.hide()
+            except:
+                pass
 
         elif type == "Ramp":
             for name, [label, parameter] in self.parameter_dict.items():
@@ -438,15 +467,23 @@ class OutputParameterLayout(QGridLayout):
                 else:
                     label.hide()
                     parameter.hide()
+            try:
+                self.tickle_layout.hide()
+            except:
+                pass
 
         elif type == "Mass Analysis":
             for name, [label, parameter] in self.parameter_dict.items():
-                if name in ['Type', 'Start', 'End', 'Duty Cycle', 'Step', 'Tickle Phase', 'Tickle Voltage', 'Eject at beta']:
+                if name in ['Type', 'Start', 'End', 'Duty Cycle', 'Tickle Phase', 'Tickle Voltage', 'Eject at beta']:
                     label.show()
                     parameter.show()
                 else:
                     label.hide()
                     parameter.hide()
+            try:
+                self.tickle_layout.hide()
+            except:
+                pass
 
         elif type == "Dump":
             for name, [label, parameter] in self.parameter_dict.items():
@@ -456,6 +493,10 @@ class OutputParameterLayout(QGridLayout):
                 else:
                     label.hide()
                     parameter.hide()
+            try:
+                self.tickle_layout.hide()
+            except:
+                pass
 
         elif type == "Custom":
             for name, [label, parameter] in self.parameter_dict.items():
@@ -465,34 +506,61 @@ class OutputParameterLayout(QGridLayout):
                 else:
                     label.hide()
                     parameter.hide()
+            try:
+                self.tickle_layout.hide()
+            except:
+                pass
 
         elif type == "CID":
             for name, [label, parameter] in self.parameter_dict.items():
-                if name in ['Type', 'Start', 'Duty Cycle', 'Tickle Phase', 'Tickle Voltage', 'Tickle Output']:
+                if name in ['Type', 'Start', 'Duty Cycle']:
                     label.show()
                     parameter.show()
                 else:
                     label.hide()
                     parameter.hide()
+            try:
+                self.tickle_layout.show()
+                self.tickle_layout.tickle_dict['End'][0].hide()
+                self.tickle_layout.tickle_dict['End'][1].hide()
+            except:
+                pass
+
 
         elif type == "Isolation":
             for name, [label, parameter] in self.parameter_dict.items():
-                if name in ['Type', 'Start', 'End', 'Duty Cycle', 'Tickle Phase', 'Tickle Voltage', 'Tickle Output']:
+                if name in ['Type', 'Start', 'Duty Cycle']:
                     label.show()
                     parameter.show()
                 else:
                     label.hide()
                     parameter.hide()
+            try:
+                self.tickle_layout.show()
+                self.tickle_layout.tickle_dict['End'][0].show()
+                self.tickle_layout.tickle_dict['End'][1].show()
+            except:
+                pass
 
         else:
             pass
 
+        # Reset values and boxes for hidden parameters
         for name, [label, parameter] in self.parameter_dict.items():
             if parameter.isHidden():
                 try:
                     parameter.setText("")
                 except:
-                    pass
+                    parameter.setCurrentIndex(0)
+        try:
+            if self.tickle_layout.isHidden():
+                for name, [label, parameter] in self.tickle_layout.tickle_dict.items():
+                    try:
+                        parameter.setText("")
+                    except:
+                        parameter.setCurrentIndex(0)
+        except:
+            pass
 
     def convertToDictionary(self):
         # Write output parameters to dictionary
@@ -504,7 +572,7 @@ class OutputParameterLayout(QGridLayout):
                     self.output_data[name] = float(parameter.text())
                 except:
                     try:
-                        # Tickle division is integer
+                        # Tickle phase is integer
                         self.output_data[name] = int(parameter.currentText())
                     except:
                         try:
@@ -512,20 +580,102 @@ class OutputParameterLayout(QGridLayout):
                             self.output_data[name] = parameter.currentText()
                         except:
                             self.output_data[name] = None
+        # Write supplementary tickle parameters to dictionary
+        try:
+            if self.tickle_layout.isHidden() == False:
+                self.output_data["Supplementary Tickle"] = self.tickle_layout.convertToDictionary()
+        except:
+            pass
         # Return output dictionary
         return self.output_data
 
     def convertFromDictionary(self, output_data):
         # Update parameters
+        self.updateType(str(output_data["Type"]))
         for label, parameter_data in output_data.items():
+            try:
+                self.parameter_dict[label][1].setText(str(parameter_data))
+            except:
+                pass
             try:
                 self.parameter_dict[label][1].setCurrentText(str(parameter_data))
             except:
+                pass
+        # Update supplementary tickle parameters
+        try:
+            self.tickle_layout.convertFromDictionary(output_data["Supplementary Tickle"])
+        except:
+            pass
+
+class SupplementaryTickleLayout(QFrame):
+    def __init__(self):
+        super(SupplementaryTickleLayout, self).__init__()
+        # Set layout
+        self.setLayout(QGridLayout())
+        self.setFixedWidth(WIDTH*2)
+        self.layout().setContentsMargins(0, 0, 0, 0)
+        self.layout().setAlignment(Qt.AlignLeft)
+        self.size_policy = QSizePolicy()
+        self.size_policy.setRetainSizeWhenHidden(True)
+        self.setSizePolicy(self.size_policy)
+        # Create header
+        self.layout().addWidget(QLabel("Supplementary Tickle"), 0, 0, 1, 2)
+        # Create labels and boxes
+        self.tickle_dict = OrderedDict()
+        self.tickle_dict['Start'] = [QLabel(), QLineEdit()]
+        self.tickle_dict['End'] = [QLabel(), QLineEdit()]
+        self.tickle_dict['Duty Cycle'] = [QLabel(), QLineEdit()]
+        self.tickle_dict['Tickle Voltage'] = [QLabel(), QLineEdit()]
+        self.tickle_dict['Tickle Phase'] = [QLabel(), QComboBox()]
+        # Place labels and boxes in layout
+        self.layout_position = 1
+        for name, [label, parameter] in self.tickle_dict.items():
+            if name in ['Start', 'End']:
+                label.setText(name + " (Hz)")
+            else:
+                label.setText(name)
+            label.setFixedWidth(WIDTH-6)
+            parameter.setFixedWidth(WIDTH)
+            parameter.setSizePolicy(self.size_policy)
+            self.layout().addWidget(label, self.layout_position, 0)
+            self.layout().addWidget(parameter, self.layout_position, 1)
+            self.layout_position += 1
+        # Set up phase options
+        self.tickle_dict['Tickle Phase'][1].addItem("0")
+        self.tickle_dict['Tickle Phase'][1].addItem("180")
+
+    def convertToDictionary(self):
+        # Write tickle parameters to dictionary
+        self.tickle_data = {}
+        for name, [label, parameter] in self.tickle_dict.items():
+            if parameter.isHidden() == False:
                 try:
-                    self.parameter_dict[label][1].setText(str(parameter_data))
+                    # Most parameters have text - convert to number
+                    self.tickle_data[name] = float(parameter.text())
                 except:
-                    self.parameter_dict[label][1].setText(None)
-            self.updateType(str(output_data["Type"]))
+                    try:
+                        # Tickle division is integer
+                        self.tickle_data[name] = int(parameter.currentText())
+                    except:
+                        try:
+                            # Type parameter has current text
+                            self.tickle_data[name] = parameter.currentText()
+                        except:
+                            self.tickle_data[name] = None
+        # Return output dictionary
+        return self.tickle_data
+
+    def convertFromDictionary(self, tickle_data):
+        # Update parameters
+        for label, parameter_data in tickle_data.items():
+            try:
+                self.tickle_dict[label][1].setText(str(parameter_data))
+            except:
+                pass
+            try:
+                self.tickle_dict[label][1].setCurrentText(str(parameter_data))
+            except:
+                pass
 
 class ScanFunctionPlot(pg.PlotWidget):
     def __init__(self):

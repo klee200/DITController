@@ -52,52 +52,62 @@ class MainWindow(QMainWindow):
         self.left_splitter.addWidget(self.scan_function.scan_plot)
         self.scan_function.scan_plot.hide()
 
-        # Top right displays buttons in grid layout
-        self.button_layout = QGridLayout()
-        # Add button layout to right half
-        self.right_layout.addLayout(self.button_layout)
+        # Top right displays frequency and m/z options
+        self.conversion_layout = QGridLayout()
+        # Add layout to right half
+        self.right_layout.addLayout(self.conversion_layout)
         # Create buttons at locations (row, column) in grid
         # Select frequency or m/z display
         self.frequency_button = QRadioButton("Frequency")
-        self.button_layout.addWidget(self.frequency_button, 0, 0)
+        self.conversion_layout.addWidget(self.frequency_button, 0, 0)
         self.mass_button = QRadioButton("m/z")
-        self.button_layout.addWidget(self.mass_button, 0, 1)
+        self.conversion_layout.addWidget(self.mass_button, 0, 1)
         self.convert_buttons = QButtonGroup()
         self.convert_buttons.addButton(self.frequency_button)
         self.convert_buttons.addButton(self.mass_button)
         # Initial state
         self.frequency_button.setChecked(True)
         self.mass_button.setCheckable(False)
-        # Display select functions
-        self.frequency_button.toggled.connect(lambda: self.convertNumbers(self.conv_const_box.text()))
         # Create label and box for conversion constant
-        self.button_layout.addWidget(QLabel("Conversion constant"), 1, 0)
+        self.conversion_layout.addWidget(QLabel("Drive constant"), 1, 0)
         self.conv_const_box = QLineEdit()
-        self.button_layout.addWidget(self.conv_const_box, 1, 1)
-        self.conv_const_box.textChanged.connect(self.setConversionState)
+        self.conversion_layout.addWidget(self.conv_const_box, 1, 1)
+        self.conv_const_box.textChanged.connect(lambda: self.setConversionState(self.conv_const_box.text(), self.tickle_const_box.text()))
+        self.conversion_layout.addWidget(QLabel("Tickle constant"), 2, 0)
+        self.tickle_const_box = QLineEdit()
+        self.conversion_layout.addWidget(self.tickle_const_box, 2, 1)
+        self.tickle_const_box.textChanged.connect(lambda: self.setConversionState(self.conv_const_box.text(), self.tickle_const_box.text()))
+        # Number display select functions
+        self.frequency_button.toggled.connect(lambda: self.convertNumbers(self.conv_const_box.text(), self.tickle_const_box.text()))
+
+        # Middle right displays buttons in grid layout
+        self.button_layout = QGridLayout()
+        # Add button layout to right half
+        self.right_layout.addLayout(self.button_layout)
+        # Create buttons at locations (row, column) in grid
         # Add scan segment button
         self.add_remove_button = QPushButton("Add/Remove Segments")
-        self.button_layout.addWidget(self.add_remove_button, 2, 0, 1, 2)
+        self.button_layout.addWidget(self.add_remove_button, 3, 0, 1, 2)
         # Add/remove scan segment button function
         self.add_remove_button.clicked.connect(lambda: AddRemoveSegmentDialog(self).open())
         # Download button
         self.download_button = QPushButton("Download Scan")
-        self.button_layout.addWidget(self.download_button, 3, 0)
+        self.button_layout.addWidget(self.download_button, 4, 0)
         # Download button function
         self.download_button.clicked.connect(self.downloadScanFunction)
         # Upload button
         self.upload_button = QPushButton("Upload Scan")
-        self.button_layout.addWidget(self.upload_button, 3, 1)
+        self.button_layout.addWidget(self.upload_button, 4, 1)
         # Upload button function
         self.upload_button.clicked.connect(self.uploadScanFunction)
         # Run button
         self.run_button = QPushButton("Run Scan")
-        self.button_layout.addWidget(self.run_button, 4, 0)
+        self.button_layout.addWidget(self.run_button, 5, 0)
         # Run button function
         self.run_button.clicked.connect(self.runScanFunction)
         # Stop button
         self.stop_button = QPushButton("Stop Scan")
-        self.button_layout.addWidget(self.stop_button, 4, 1)
+        self.button_layout.addWidget(self.stop_button, 5, 1)
         # Stop button function
         self.stop_button.clicked.connect(self.stopScanFunction)
 
@@ -133,7 +143,14 @@ class MainWindow(QMainWindow):
         self.labels_option.triggered.connect(lambda: EditAnaDigLabelsDialog(self).exec())
         # Edit conversion constant
         self.calculator_option = self.edit_menu.addAction("Calculator")
-        self.calculator_option.triggered.connect(lambda: CalculatorDialog(self).open())
+        self.calculator_option.triggered.connect(lambda: CalculatorDialog(self).exec())
+        # Default values
+        self.default_r = "0.701"
+        self.default_z = "0.681"
+        self.default_high_v = "300"
+        self.default_low_v = "-300"
+        self.default_duty_cycle = "50"
+        self.default_q_z = "0.712"
 
         # Settings menu
         self.settings_menu = self.menuBar().addMenu("Settings")
@@ -143,10 +160,11 @@ class MainWindow(QMainWindow):
         # Show dialog box when button is clicked
         self.connection_option.triggered.connect(self.connection_dialog.exec)
 
-    def setConversionState(self, constant):
+    def setConversionState(self, drive_constant, tickle_constant):
         try:
             # If constant box has a number allow user to push conversion buttons
-            float(constant)
+            float(drive_constant)
+            float(tickle_constant)
             self.frequency_button.setCheckable(True)
             self.mass_button.setCheckable(True)
         except:
@@ -156,11 +174,11 @@ class MainWindow(QMainWindow):
             else:
                 self.frequency_button.setCheckable(False)
 
-    def convertNumbers(self, conversion_constant):
+    def convertNumbers(self, conversion_constant, tickle_constant):
         if self.frequency_button.isChecked() == True:
-            self.scan_function.convertToFrequency(conversion_constant)
+            self.scan_function.convertToFrequency(conversion_constant, tickle_constant)
         elif self.mass_button.isChecked() == True:
-            self.scan_function.convertToMass(conversion_constant)
+            self.scan_function.convertToMass(conversion_constant, tickle_constant)
 
     def downloadScanFunction(self):
         # Check validity of scan function
@@ -175,17 +193,19 @@ class MainWindow(QMainWindow):
                     self.num_mass_anaylsis_segments += 1
                 if output.parameter_dict["Type"][1].currentText() in ["Ramp", "Mass Analysis", "Isolation"]:
                     self.num_ramps += 1
-            # Count the number of output 3 special functions
-            self.num_special = 0
+            # Count the number of output 3 functions (including CID and Isolation on 1 and 2)
+            self.num_output3 = 0
+            if segment.output_list[2].parameter_dict["Type"][1].currentText() != "None":
+                self.num_output3 += 1
             for output in segment.output_list:
                 if output.parameter_dict["Type"][1].currentText() in ["CID", "Isolation"]:
-                    self.num_special += 1
+                    self.num_output3 += 1
             # If more than one ramp segment found, the scan function is invalid
-            if self.num_ramps > 1 or self.num_special > 1:
+            if self.num_ramps > 1 or self.num_output3 > 1:
                 self.valid_scan_function = False
         # Only one allowed mass analysis step in scan function
-        if self.num_mass_anaylsis_segments > 1:
-            self.valid_scan_function = False
+        # if self.num_mass_anaylsis_segments > 1:
+        #     self.valid_scan_function = False
 
         if self.valid_scan_function == False:
             self.announcer.appendPlainText("Invalid scan function")
@@ -195,7 +215,7 @@ class MainWindow(QMainWindow):
                 self.frequency_button.toggle()
             # Convert list into json string
             scan_function_json = self.scan_function.convertToJson()
-            self.announcer.appendPlainText(scan_function_json)
+            # self.announcer.appendPlainText(scan_function_json)
             try:
                 # Send json string to Arduino
                 self.connection_dialog.master_serial.serialWrite('D')
@@ -213,11 +233,15 @@ class MainWindow(QMainWindow):
     def runScanFunction(self):
         try:
             self.connection_dialog.master_serial.serialWrite('R')
+            self.download_button.setEnabled(False)
+            self.upload_button.setEnabled(False)
         except:
             self.announcer.appendPlainText("No serial port found")
 
     def stopScanFunction(self):
         try:
             self.connection_dialog.master_serial.serialWrite('S')
+            self.download_button.setEnabled(True)
+            self.upload_button.setEnabled(True)
         except:
             self.announcer.appendPlainText("No serial port found")
