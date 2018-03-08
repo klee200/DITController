@@ -3,6 +3,7 @@ from PyQt5.QtCore import *
 from Communication import SerialPort
 from ScanFunction import *
 import pdb
+import numpy as np
 
 
 class OpenScanDialog(QFileDialog):
@@ -11,9 +12,9 @@ class OpenScanDialog(QFileDialog):
         try:
             # Check with user if needs to save current scan
             SaveCheckDialog(main_window).exec()
-            # Make sure mode is set to frequency
-            if main_window.mass_button.isChecked() == True:
-                main_window.frequency_button.setChecked(True)
+            # # Make sure mode is set to frequency
+            # if main_window.mass_button.isChecked() == True:
+            #     main_window.frequency_button.setChecked(True)
             # Get file name from text box
             self.file_name = self.getOpenFileName(filter='Scan Files (*.mcl);;Text Files (*.txt)')[0]
             # Open file for reading
@@ -30,9 +31,9 @@ class SaveScanDialog(QFileDialog):
     def __init__(self, main_window):
         super(SaveScanDialog, self).__init__()
         try:
-            # Make sure mode is set to frequency
-            if main_window.mass_button.isChecked() == True:
-                main_window.frequency_button.setChecked(True)
+            # # Make sure mode is set to frequency
+            # if main_window.mass_button.isChecked() == True:
+            #     main_window.frequency_button.setChecked(True)
             # Get file name from text box
             self.file_name = self.getSaveFileName(filter='Scan Files (*.mcl);;Text Files (*.txt)')[0]
             # Create file for writing
@@ -71,7 +72,7 @@ class SaveCheckDialog(QDialog):
 
 
 class ConnectionDialog(QDialog):
-    def __init__(self, announcer):
+    def __init__(self, main_window):
         super(ConnectionDialog, self).__init__()
         # Create layout for dialog box
         self.main_layout = QGridLayout()
@@ -82,7 +83,7 @@ class ConnectionDialog(QDialog):
         self.slave_label = QLabel('Slave: ')
         self.main_layout.addWidget(self.slave_label, 3, 0)
         # Create boxes
-        self.master_box = QLineEdit()
+        self.master_box = QLineEdit("COM7")
         self.main_layout.addWidget(self.master_box, 0, 1)
         self.slave_box = QLineEdit()
         self.main_layout.addWidget(self.slave_box, 3, 1)
@@ -106,11 +107,12 @@ class ConnectionDialog(QDialog):
         self.main_layout.addWidget(self.line, 2, 0, 1, 2)
 
         # Allow external dialog to access announcer in Main Window
-        self.announcer = announcer
+        self.main_window = main_window
+        self.announcer = main_window.announcer
 
     def connectMaster(self, port_choice):
         try:
-            self.master_serial = SerialPort(port_choice, self.announcer)
+            self.master_serial = SerialPort(port_choice, self.main_window)
             self.announcer.appendPlainText("Master serial connected")
         except:
             self.announcer.appendPlainText("No serial port found")
@@ -242,85 +244,109 @@ class EditAnaDigLabelsDialog(QDialog):
 class CalculatorDialog(QDialog):
     def __init__(self, main_window):
         super(CalculatorDialog, self).__init__()
+        self.setWindowFlags(Qt.WindowStaysOnTopHint)
         self.main_window = main_window
         # Make layout
         self.setLayout(QGridLayout())
+        # Constants
+        self.electron = 1.602e-19
+        self.amu = 1.66e-27
         # Make labels and boxes
         self.layout().addWidget(QLabel("r\u2080 (cm)"), 0, 0)
-        self.r_box = QLineEdit(self.main_window.default_r)
+        self.r_box = QLineEdit("0.849")
         self.layout().addWidget(self.r_box, 0, 1)
         self.layout().addWidget(QLabel("z\u2080 (cm)"), 1, 0)
-        self.z_box = QLineEdit(self.main_window.default_z)
+        self.z_box = QLineEdit("0.681")
         self.layout().addWidget(self.z_box, 1, 1)
         self.layout().addWidget(QLabel("High V (V)"), 0, 2)
-        self.high_v_box = QLineEdit(self.main_window.default_high_v)
+        self.high_v_box = QLineEdit("300")
         self.layout().addWidget(self.high_v_box, 0, 3)
         self.layout().addWidget(QLabel("Low V (V)"), 1, 2)
-        self.low_v_box = QLineEdit(self.main_window.default_low_v)
+        self.low_v_box = QLineEdit("-300")
         self.layout().addWidget(self.low_v_box, 1, 3)
         self.layout().addWidget(QLabel("Duty Cycle (%)"), 2, 2)
-        self.d_box = QLineEdit(self.main_window.default_duty_cycle)
+        self.d_box = QLineEdit("50")
         self.layout().addWidget(self.d_box, 2, 3)
-        self.layout().addWidget(QLabel("a"), 0, 4)
-        self.a_z_box = QLineEdit()
-        self.a_z_box.setEnabled(False)  # Make a not editable
-        self.layout().addWidget(self.a_z_box, 0, 5)
-        self.layout().addWidget(QLabel("q"), 1, 4)
-        self.q_z_box = QLineEdit(self.main_window.default_q_z)
-        self.layout().addWidget(self.q_z_box, 1, 5)
-        self.layout().addWidget(QLabel("Beta"), 2, 4)
-        self.beta_box = QLineEdit()
-        self.layout().addWidget(self.beta_box, 2, 5)
-        self.beta_box.setEnabled(False)  # Make beta not editable
+        # self.layout().addWidget(QLabel("a"), 0, 4)
+        # self.a_z_box = QLineEdit()
+        # self.a_z_box.setEnabled(False)  # Make a not editable
+        # self.layout().addWidget(self.a_z_box, 0, 5)
+        # self.layout().addWidget(QLabel("q"), 1, 4)
+        # self.q_z_box = QLineEdit(self.main_window.default_q_z)
+        # self.layout().addWidget(self.q_z_box, 1, 5)
+        self.layout().addWidget(QLabel("Beta r"), 4, 0)
+        self.beta_r_box = QLineEdit()
+        self.layout().addWidget(self.beta_r_box, 4, 1)
+        self.beta_r_box.setEnabled(False)  # Make beta not editable
+        self.layout().addWidget(QLabel("Beta z"), 4, 2)
+        self.beta_z_box = QLineEdit()
+        self.layout().addWidget(self.beta_z_box, 4, 3)
+        self.beta_z_box.setEnabled(False)  # Make beta not editable
         # Make horizontal line
         self.line = QFrame()
         self.line.setFrameShape(QFrame.HLine)
         self.layout().addWidget(self.line, 3, 0, 1, 6)
         # Make m/z and frequency boxes
-        self.layout().addWidget(QLabel("Drive frequency (Hz)"), 4, 0)
-        self.frequency_box = QLineEdit("100000")
-        self.layout().addWidget(self.frequency_box, 4, 1)
-        self.layout().addWidget(QLabel("m/z"), 4, 2)
-        self.mass_box = QLineEdit()
-        self.layout().addWidget(self.mass_box, 4, 3)
-        self.layout().addWidget(QLabel("Ion frequency (Hz)"), 5, 2)
+        self.layout().addWidget(QLabel("Drive frequency (Hz)"), 0, 4)
+        self.frequency_box = QLineEdit("200000")
+        self.layout().addWidget(self.frequency_box, 0, 5)
+        self.layout().addWidget(QLabel("m/z"), 1, 4)
+        self.mass_box = QLineEdit("2000")
+        self.layout().addWidget(self.mass_box, 1, 5)
+        self.layout().addWidget(QLabel("Ion frequency (Hz)"), 4, 4)
         self.ion_freq_box = QLineEdit()
-        self.layout().addWidget(self.ion_freq_box, 5, 3)
+        self.layout().addWidget(self.ion_freq_box, 4, 5)
+        self.ion_freq_box.setEnabled(False)  # Make ion frequency not editable
+        # Find boundary button and functionality
+        self.beta_select = QComboBox()
+        self.layout().addWidget(self.beta_select, 2, 4)
+        self.beta_select.addItem("1")
+        self.beta_select.addItem("0.5")
+        self.beta_select.addItem("0.25")
+        self.beta_select.addItem("0.125")
+        self.find_boundary_button = QPushButton("Find boundary")
+        self.layout().addWidget(self.find_boundary_button, 2, 5)
+        self.find_boundary_button.clicked.connect(self.findBoundary)
         # Make conversion constant box
-        self.layout().addWidget(QLabel("Drive constant"), 4, 4)
-        self.drive_const_box = QLineEdit()
-        self.layout().addWidget(self.drive_const_box, 4, 5)
-        self.layout().addWidget(QLabel("Tickle constant"), 5, 4)
-        self.tickle_const_box = QLineEdit()
-        self.layout().addWidget(self.tickle_const_box, 5, 5)
-        self.button = QPushButton("Copy constants")
-        self.layout().addWidget(self.button, 6, 5)
-        self.button.clicked.connect(self.copyConstants)
-        self.save_default_button = QPushButton("Save as default")
-        self.layout().addWidget(self.save_default_button, 6, 0)
-        self.save_default_button.clicked.connect(self.saveDefaults)
+        # self.layout().addWidget(QLabel("Drive constant"), 4, 4)
+        # self.drive_const_box = QLineEdit()
+        # self.layout().addWidget(self.drive_const_box, 4, 5)
+        # self.layout().addWidget(QLabel("Tickle constant"), 5, 4)
+        # self.tickle_const_box = QLineEdit()
+        # self.layout().addWidget(self.tickle_const_box, 5, 5)
+        # self.button = QPushButton("Copy constants")
+        # self.layout().addWidget(self.button, 6, 5)
+        # self.button.clicked.connect(self.copyConstants)
+        # self.save_default_button = QPushButton("Save as default")
+        # self.layout().addWidget(self.save_default_button, 6, 0)
+        # self.save_default_button.clicked.connect(self.saveDefaults)
+        # self.close_button = QPushButton("Close")
+        # self.layout().addWidget(self.close_button, 6, 5)
+        # self.close_button.clicked.connect(self.close)
         self.update()
 
         # Connect parameter boxes to conversion constant, a, and mass boxes
-        self.q_z_box.textEdited.connect(self.update)
-        self.r_box.textEdited.connect(self.update)
-        self.z_box.textEdited.connect(self.update)
-        self.high_v_box.textEdited.connect(self.update)
-        self.low_v_box.textEdited.connect(self.update)
-        self.d_box.textEdited.connect(self.update)
-        self.frequency_box.textEdited.connect(self.update)
+        # self.q_z_box.textEdited.connect(self.update)
+        self.r_box.textChanged.connect(self.update)
+        self.z_box.textChanged.connect(self.update)
+        self.high_v_box.textChanged.connect(self.update)
+        self.low_v_box.textChanged.connect(self.update)
+        self.d_box.textChanged.connect(self.update)
+        self.frequency_box.textChanged.connect(self.update)
+        self.mass_box.textChanged.connect(self.update)
         # Connect frequency and m/z boxes
-        self.frequency_box.textEdited.connect(self.calculateMass)
-        self.frequency_box.textEdited.connect(self.calculateIonFreq)
-        self.mass_box.textEdited.connect(self.calculateFrequency)
+        # self.frequency_box.textEdited.connect(self.calculateMass)
+        # self.frequency_box.textEdited.connect(self.calculateIonFreq)
+        # self.mass_box.textEdited.connect(self.calculateFrequency)
 
     def update(self):
-        self.calculateAz()
-        self.calculateDriveConstant()
-        self.calculateMass()
-        self.calculateBeta()
+        # self.calculateAz()
+        # self.calculateDriveConstant()
+        # self.calculateMass()
+        self.calculateBetaR()
+        self.calculateBetaZ()
         self.calculateIonFreq()
-        self.calculateTickleConstant()
+        # self.calculateTickleConstant()
 
     # def calculateQz(self):
     #     # Calculate U and V
@@ -333,102 +359,182 @@ class CalculatorDialog(QDialog):
     #
     #     self.q_z_box.setText(q_z)
 
-    def calculateAz(self):
-        # Calculate U and V
+    # def calculateAz(self):
+    #     # Calculate U and V
+    #     try:
+    #         U = float(self.d_box.text()) / 100 * float(self.high_v_box.text()) + (1 - float(
+    #             self.d_box.text()) / 100) * float(self.low_v_box.text())
+    #         V = 2 * (float(self.high_v_box.text()) - float(self.low_v_box.text())) * (
+    #         1 - float(self.d_box.text()) / 100) * float(self.d_box.text()) / 100
+    #         a_z = str(float(self.q_z_box.text()) * -2 * U / V)
+    #     except:
+    #         a_z = None
+    #
+    #     self.a_z_box.setText(a_z)
+
+    # def calculateMass(self):
+    #     # m/z = 8*e*V/(r^2+2z^2)/frequency^2/qz
+    #     try:
+    #         V = 2 * (float(self.high_v_box.text()) - float(self.low_v_box.text())) * (
+    #         1 - float(self.d_box.text()) / 100) * float(self.d_box.text()) / 100
+    #         mass = str(8 * 1.602e-19 * V / (
+    #         pow(float(self.r_box.text()) / 100, 2) + 2 * pow(float(self.z_box.text()) / 100, 2)) / pow(
+    #             float(self.frequency_box.text()) * 2 * pi, 2) / float(self.q_z_box.text()) / 1.66e-27)
+    #     except:
+    #         mass = None
+    #
+    #     self.mass_box.setText(mass)
+
+    # def calculateFrequency(self):
+    #     try:
+    #         V = 2 * (float(self.high_v_box.text()) - float(self.low_v_box.text())) * (
+    #         1 - float(self.d_box.text()) / 100) * float(self.d_box.text()) / 100
+    #         frequency = str(sqrt(8 * 1.602e-19 * V / (
+    #         pow(float(self.r_box.text()) / 100, 2) + 2 * pow(float(self.z_box.text()) / 100, 2)) / float(
+    #             self.mass_box.text()) / float(self.q_z_box.text()) / 1.66e-27) / 2 / pi)
+    #     except:
+    #         frequency = None
+    #
+    #     self.frequency_box.setText(frequency)
+
+    def calculateBetaR(self):
         try:
-            U = float(self.d_box.text()) / 100 * float(self.high_v_box.text()) + (1 - float(
-                self.d_box.text()) / 100) * float(self.low_v_box.text())
-            V = 2 * (float(self.high_v_box.text()) - float(self.low_v_box.text())) * (
-            1 - float(self.d_box.text()) / 100) * float(self.d_box.text()) / 100
-            a_z = str(float(self.q_z_box.text()) * -2 * U / V)
+            delta_hi = float(self.d_box.text()) / 100 * pi
+            delta_lo = (1 - float(self.d_box.text()) / 100) * pi
+
+            f_r_hi = 2 * 4 * self.electron * float(self.high_v_box.text()) / (float(self.mass_box.text()) * self.amu * pow(float(self.frequency_box.text()) * 2 * pi, 2) * (pow(float(self.r_box.text()) / 100, 2) + 2* pow(float(self.z_box.text()) / 100, 2)))
+            m_r_hi = [[0 for x in range(2)] for y in range(2)]
+            if f_r_hi > 0:
+                m_r_hi[0][0] = cos(sqrt(f_r_hi) * delta_hi)
+                m_r_hi[0][1] = 1 / sqrt(f_r_hi) * sin(sqrt(f_r_hi) * delta_hi)
+                m_r_hi[1][0] = -sqrt(f_r_hi) * sin(sqrt(f_r_hi) * delta_hi)
+                m_r_hi[1][1] = cos(sqrt(f_r_hi) * delta_hi)
+            else:
+                m_r_hi[0][0] = cosh(sqrt(-f_r_hi) * delta_hi)
+                m_r_hi[0][1] = 1 / sqrt(-f_r_hi) * sinh(sqrt(-f_r_hi) * delta_hi)
+                m_r_hi[1][0] = sqrt(-f_r_hi) * sinh(sqrt(-f_r_hi) * delta_hi)
+                m_r_hi[1][1] = cosh(sqrt(-f_r_hi) * delta_hi)
+
+            f_r_lo = 2 * 4 * self.electron * float(self.low_v_box.text()) / (float(self.mass_box.text()) * self.amu * pow(float(self.frequency_box.text()) * 2 * pi, 2) * (pow(float(self.r_box.text()) / 100, 2) + 2 * pow(float(self.z_box.text()) / 100, 2)))
+            m_r_lo = [[0 for x in range(2)] for y in range(2)]
+            if f_r_lo > 0:
+                m_r_lo[0][0] = cos(sqrt(f_r_lo) * delta_lo)
+                m_r_lo[0][1] = 1 / sqrt(f_r_lo) * sin(sqrt(f_r_lo) * delta_lo)
+                m_r_lo[1][0] = -sqrt(f_r_lo) * sin(sqrt(f_r_lo) * delta_lo)
+                m_r_lo[1][1] = cos(sqrt(f_r_lo) * delta_lo)
+            else:
+                m_r_lo[0][0] = cosh(sqrt(-f_r_lo) * delta_lo)
+                m_r_lo[0][1] = 1 / sqrt(-f_r_lo) * sinh(sqrt(-f_r_lo) * delta_lo)
+                m_r_lo[1][0] = sqrt(-f_r_lo) * sinh(sqrt(-f_r_lo) * delta_lo)
+                m_r_lo[1][1] = cosh(sqrt(-f_r_lo) * delta_lo)
+            m_r = np.dot(m_r_hi, m_r_lo)
+            beta_r = acos((m_r[0][0] + m_r[1][1]) / 2) / pi
         except:
-            a_z = None
+            beta_r = inf
+        self.beta_r_box.setText(str(beta_r))
 
-        self.a_z_box.setText(a_z)
-
-    def calculateMass(self):
-        # m/z = 8*e*V/(r^2+2z^2)/frequency^2/qz
+    def calculateBetaZ(self):
         try:
-            V = 2 * (float(self.high_v_box.text()) - float(self.low_v_box.text())) * (
-            1 - float(self.d_box.text()) / 100) * float(self.d_box.text()) / 100
-            mass = str(8 * 1.602e-19 * V / (
-            pow(float(self.r_box.text()) / 100, 2) + 2 * pow(float(self.z_box.text()) / 100, 2)) / pow(
-                float(self.frequency_box.text()) * 2 * pi, 2) / float(self.q_z_box.text()) / 1.66e-27)
+            delta_hi = float(self.d_box.text()) / 100 * pi
+            delta_lo = (1 - float(self.d_box.text()) / 100) * pi
+
+            f_z_hi = -2 * 8 * self.electron * float(self.high_v_box.text()) / (float(self.mass_box.text()) * self.amu * pow(float(self.frequency_box.text()) * 2 * pi, 2) * (pow(float(self.r_box.text()) / 100, 2) + 2 * pow(float(self.z_box.text()) / 100, 2)))
+            m_z_hi = [[0 for x in range(2)] for y in range(2)]
+            if f_z_hi > 0:
+                m_z_hi[0][0] = cos(sqrt(f_z_hi) * delta_hi)
+                m_z_hi[0][1] = 1 / sqrt(f_z_hi) * sin(sqrt(f_z_hi) * delta_hi)
+                m_z_hi[1][0] = -sqrt(f_z_hi) * sin(sqrt(f_z_hi) * delta_hi)
+                m_z_hi[1][1] = cos(sqrt(f_z_hi) * delta_hi)
+            else:
+                m_z_hi[0][0] = cosh(sqrt(-f_z_hi) * delta_hi)
+                m_z_hi[0][1] = 1 / sqrt(-f_z_hi) * sinh(sqrt(-f_z_hi) * delta_hi)
+                m_z_hi[1][0] = sqrt(-f_z_hi) * sinh(sqrt(-f_z_hi) * delta_hi)
+                m_z_hi[1][1] = cosh(sqrt(-f_z_hi) * delta_hi)
+
+            f_z_lo = -2 * 8 * self.electron * float(self.low_v_box.text()) / (float(self.mass_box.text()) * self.amu * pow(float(self.frequency_box.text()) * 2 * pi, 2) * (pow(float(self.r_box.text()) / 100, 2) + 2 * pow(float(self.z_box.text()) / 100, 2)))
+            m_z_lo = [[0 for x in range(2)] for y in range(2)]
+            if f_z_lo > 0:
+                m_z_lo[0][0] = cos(sqrt(f_z_lo) * delta_lo)
+                m_z_lo[0][1] = 1 / sqrt(f_z_lo) * sin(sqrt(f_z_lo) * delta_lo)
+                m_z_lo[1][0] = -sqrt(f_z_lo) * sin(sqrt(f_z_lo) * delta_lo)
+                m_z_lo[1][1] = cos(sqrt(f_z_lo) * delta_lo)
+            else:
+                m_z_lo[0][0] = cosh(sqrt(-f_z_lo) * delta_lo)
+                m_z_lo[0][1] = 1 / sqrt(-f_z_lo) * sinh(sqrt(-f_z_lo) * delta_lo)
+                m_z_lo[1][0] = sqrt(-f_z_lo) * sinh(sqrt(-f_z_lo) * delta_lo)
+                m_z_lo[1][1] = cosh(sqrt(-f_z_lo) * delta_lo)
+            m_z = np.dot(m_z_hi, m_z_lo)
+            beta_z = acos((m_z[0][0] + m_z[1][1]) / 2) / pi
+
+            # K_hi = sqrt(float(self.q_z_box.text()) / (float(self.d_box.text()) / 100) - float(self.a_z_box.text()))
+            # K_lo = sqrt(
+            #     -1 * float(self.q_z_box.text()) / (float(self.d_box.text()) / 100 - 1) + float(self.a_z_box.text()))
+            # phi_11 = cosh(K_hi * pi * float(self.d_box.text()) / 100) * cos(
+            #     K_lo * pi * (1 - float(self.d_box.text()) / 100)) + K_hi / K_lo * sinh(
+            #     K_hi * pi * float(self.d_box.text()) / 100) * sin(K_lo * pi * (1 - float(self.d_box.text()) / 100))
+            # phi_22 = cosh(K_hi * pi * float(self.d_box.text()) / 100) * cos(
+            #     K_lo * pi * (1 - float(self.d_box.text()) / 100)) - K_lo / K_hi * sinh(
+            #     K_hi * pi * float(self.d_box.text()) / 100) * sin(K_lo * pi * (1 - float(self.d_box.text()) / 100))
+            # beta = str(1 / pi * acos((phi_11 + phi_22) / 2))
         except:
-            mass = None
-
-        self.mass_box.setText(mass)
-
-    def calculateFrequency(self):
-        try:
-            V = 2 * (float(self.high_v_box.text()) - float(self.low_v_box.text())) * (
-            1 - float(self.d_box.text()) / 100) * float(self.d_box.text()) / 100
-            frequency = str(sqrt(8 * 1.602e-19 * V / (
-            pow(float(self.r_box.text()) / 100, 2) + 2 * pow(float(self.z_box.text()) / 100, 2)) / float(
-                self.mass_box.text()) / float(self.q_z_box.text()) / 1.66e-27) / 2 / pi)
-        except:
-            frequency = None
-
-        self.frequency_box.setText(frequency)
-
-    def calculateBeta(self):
-        try:
-            K_hi = sqrt(float(self.q_z_box.text()) / (float(self.d_box.text()) / 100) - float(self.a_z_box.text()))
-            K_lo = sqrt(
-                -1 * float(self.q_z_box.text()) / (float(self.d_box.text()) / 100 - 1) + float(self.a_z_box.text()))
-            phi_11 = cosh(K_hi * pi * float(self.d_box.text()) / 100) * cos(
-                K_lo * pi * (1 - float(self.d_box.text()) / 100)) + K_hi / K_lo * sinh(
-                K_hi * pi * float(self.d_box.text()) / 100) * sin(K_lo * pi * (1 - float(self.d_box.text()) / 100))
-            phi_22 = cosh(K_hi * pi * float(self.d_box.text()) / 100) * cos(
-                K_lo * pi * (1 - float(self.d_box.text()) / 100)) - K_lo / K_hi * sinh(
-                K_hi * pi * float(self.d_box.text()) / 100) * sin(K_lo * pi * (1 - float(self.d_box.text()) / 100))
-            beta = str(1 / pi * acos((phi_11 + phi_22) / 2))
-        except:
-            beta = None
-
-        self.beta_box.setText(beta)
+            beta_z = inf
+        self.beta_z_box.setText(str(beta_z))
 
     def calculateIonFreq(self):
         try:
-            ion_freq = str(1 / 2 * float(self.beta_box.text()) * float(self.frequency_box.text()))
+            ion_freq = 1 / 2 * float(self.beta_z_box.text()) * float(self.frequency_box.text())
         except:
             ion_freq = None
 
-        self.ion_freq_box.setText(ion_freq)
+        self.ion_freq_box.setText(str(ion_freq))
 
-    def calculateDriveConstant(self):
-        try:
-            V = 2 * (float(self.high_v_box.text()) - float(self.low_v_box.text())) * (
-            1 - float(self.d_box.text()) / 100) * float(self.d_box.text()) / 100
-            constant = str((8 * 1.602e-19 * V / (
-            pow(float(self.r_box.text()) / 100, 2) + 2 * pow(float(self.z_box.text()) / 100, 2)) / float(
-                self.q_z_box.text()) / 1.66e-27) / pow(2 * pi, 2))
-        except:
-            constant = None
+    # def calculateDriveConstant(self):
+    #     try:
+    #         V = 2 * (float(self.high_v_box.text()) - float(self.low_v_box.text())) * (
+    #         1 - float(self.d_box.text()) / 100) * float(self.d_box.text()) / 100
+    #         constant = str((8 * 1.602e-19 * V / (
+    #         pow(float(self.r_box.text()) / 100, 2) + 2 * pow(float(self.z_box.text()) / 100, 2)) / float(
+    #             self.q_z_box.text()) / 1.66e-27) / pow(2 * pi, 2))
+    #     except:
+    #         constant = None
+    #
+    #     self.drive_const_box.setText(constant)
 
-        self.drive_const_box.setText(constant)
+    # def calculateTickleConstant(self):
+    #     try:
+    #         V = 2 * (float(self.high_v_box.text()) - float(self.low_v_box.text())) * (
+    #         1 - float(self.d_box.text()) / 100) * float(self.d_box.text()) / 100
+    #         constant = str((8 * 1.602e-19 * V / (
+    #         pow(float(self.r_box.text()) / 100, 2) + 2 * pow(float(self.z_box.text()) / 100, 2)) / float(
+    #             self.q_z_box.text()) / 1.66e-27) / pow(2 * pi, 2) * pow(float(self.beta_box.text()), 2) / 4)
+    #     except:
+    #         constant = None
+    #
+    #     self.tickle_const_box.setText(constant)
 
-    def calculateTickleConstant(self):
-        try:
-            V = 2 * (float(self.high_v_box.text()) - float(self.low_v_box.text())) * (
-            1 - float(self.d_box.text()) / 100) * float(self.d_box.text()) / 100
-            constant = str((8 * 1.602e-19 * V / (
-            pow(float(self.r_box.text()) / 100, 2) + 2 * pow(float(self.z_box.text()) / 100, 2)) / float(
-                self.q_z_box.text()) / 1.66e-27) / pow(2 * pi, 2) * pow(float(self.beta_box.text()), 2) / 4)
-        except:
-            constant = None
 
-        self.tickle_const_box.setText(constant)
+    def findBoundary(self):
+        for i in range(floor(log10(float(self.frequency_box.text()))), -1, -1):
+            if float(self.beta_r_box.text()) == inf or float(self.beta_z_box.text()) == inf:
+                None
+            elif float(self.beta_z_box.text()) < float(self.beta_select.currentText()):
+                while float(self.beta_z_box.text()) < float(self.beta_select.currentText()) and float(self.beta_r_box.text()) < inf:
+                    self.frequency_box.setText(str(float(self.frequency_box.text()) - pow(10, i)))
+                self.frequency_box.setText(str(float(self.frequency_box.text()) + pow(10, i)))
+            else:
+                while float(self.beta_z_box.text()) > float(self.beta_select.currentText()) and float(self.beta_z_box.text()) < inf and float(self.beta_r_box.text()) < inf:
+                    self.frequency_box.setText(str(float(self.frequency_box.text()) + pow(10, i)))
+                self.frequency_box.setText(str(float(self.frequency_box.text()) - pow(10, i)))
 
-    def copyConstants(self):
-        self.main_window.conv_const_box.setText(self.drive_const_box.text())
-        self.main_window.tickle_const_box.setText(self.tickle_const_box.text())
-        self.close()
+    # def copyConstants(self):
+    #     self.main_window.conv_const_box.setText(self.drive_const_box.text())
+    #     self.main_window.tickle_const_box.setText(self.tickle_const_box.text())
+    #     self.close()
 
-    def saveDefaults(self):
-        self.main_window.default_r = self.r_box.text()
-        self.main_window.default_z = self.z_box.text()
-        self.main_window.default_high_v = self.high_v_box.text()
-        self.main_window.default_low_v = self.low_v_box.text()
-        self.main_window.default_duty_cycle = self.d_box.text()
-        self.main_window.default_q_z = self.q_z_box.text()
+    # def saveDefaults(self):
+    #     self.main_window.default_r = self.r_box.text()
+    #     self.main_window.default_z = self.z_box.text()
+    #     self.main_window.default_high_v = self.high_v_box.text()
+    #     self.main_window.default_low_v = self.low_v_box.text()
+    #     self.main_window.default_duty_cycle = self.d_box.text()
+    #     self.main_window.default_q_z = self.q_z_box.text()
