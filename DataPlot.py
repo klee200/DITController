@@ -41,6 +41,7 @@ from threading import Thread, Condition, Event
 class DataPlotThread(Thread):
     def __init__(self):
         super(DataPlotThread, self).__init__()
+        self.daemon = True
         self.data = b''
         # Create time axis label
         self.plot = pg.PlotWidget()

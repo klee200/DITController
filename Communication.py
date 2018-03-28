@@ -1,7 +1,7 @@
 from threading import Lock
 
 import serial
-
+import pdb
 from DataPlot import *
 
 
@@ -21,7 +21,7 @@ class SerialPort(serial.Serial):
         self.data_read_event = False
         self.end_data_lock = Lock()
         self.end_data_lock.acquire()
-        self.data_thread = Thread(target=self.dataThread)
+        self.data_thread = Thread(target=self.dataThread, daemon=True)
         self.data_thread.start()
         # self.data_active = False
 
@@ -32,6 +32,12 @@ class SerialPort(serial.Serial):
 
     def serialRead(self, stop_string):
         serial_read_input = []
+        # serial_read_input.append(self.readline().decode('ascii').strip())
+        # if len(serial_read_input) < 1:
+            # serial_read_input.append("Serial read failed")
+        # else:
+            # while serial_read_input[-1] != stop_string and self.in_waiting:
+                # serial_read_input.append(self.readline().decode('ascii').strip())
         try:
             serial_read_input.append(self.readline().decode('ascii').strip())
             while serial_read_input[-1] != stop_string:
@@ -40,10 +46,13 @@ class SerialPort(serial.Serial):
             serial_read_input.append("Serial read failed")
         return serial_read_input
 
-    def startDataRead(self):
+    def startDataRead(self, stop_string):
+        serial_read_input = []
         try:
             self.serialWrite('R')
-            serial_read_input = self.readline().decode('ascii').strip()
+            serial_read_input.append(self.readline().decode('ascii').strip())
+            while serial_read_input[-1] != stop_string:
+                serial_read_input.append(self.readline().decode('ascii').strip())
             self.data_read_event = True
             self.end_data_lock.release()
         except:

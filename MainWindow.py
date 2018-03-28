@@ -1,5 +1,6 @@
 from DataPlot import *
 from DialogWindows import *
+import pdb
 
 
 class MainWindow(QMainWindow):
@@ -52,6 +53,7 @@ class MainWindow(QMainWindow):
         # Add plot to left half
         self.data_plot_thread = DataPlotThread()
         self.left_splitter.addWidget(self.data_plot_thread.plot)
+        self.data_plot_thread.plot.hide()
         self.data_plot_thread.start()
 
         # # Top right displays frequency and m/z options
@@ -246,15 +248,16 @@ class MainWindow(QMainWindow):
     def runScanFunction(self):
         try:
             # self.connection_dialog.master_serial.serialWrite('R')
-            read_input = self.connection_dialog.master_serial.startDataRead()
-            self.announcer.appendPlainText(read_input)
+            read_input_list = self.connection_dialog.master_serial.startDataRead('Running scan function')
+            for read_input in read_input_list:
+                self.announcer.appendPlainText(read_input)
             # self.connection_dialog.master_serial.read_active = False
             # self.connection_dialog.master_serial.data_active = True
-            if read_input == "Running scan function":
-                self.download_button.setEnabled(False)
-                self.upload_button.setEnabled(False)
-                self.run_button.setEnabled(False)
-                self.stop_button.setEnabled(True)
+            # if read_input == "Running scan function":
+            self.download_button.setEnabled(False)
+            self.upload_button.setEnabled(False)
+            self.run_button.setEnabled(False)
+            self.stop_button.setEnabled(True)
         except:
             self.announcer.appendPlainText("No serial port found")
 
@@ -265,11 +268,11 @@ class MainWindow(QMainWindow):
             self.announcer.appendPlainText(read_input)
             # self.connection_dialog.master_serial.data_active = False
             # self.connection_dialog.master_serial.read_active = True
-            if read_input == "Stopping scan function":
-                self.download_button.setEnabled(True)
-                self.upload_button.setEnabled(True)
-                self.run_button.setEnabled(True)
-                self.stop_button.setEnabled(False)
+            # if read_input == "Stopping scan function":
+            self.download_button.setEnabled(True)
+            self.upload_button.setEnabled(True)
+            self.run_button.setEnabled(True)
+            self.stop_button.setEnabled(False)
         except:
             self.announcer.appendPlainText("No serial port found")
 
