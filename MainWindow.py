@@ -138,18 +138,24 @@ class MainWindow(QMainWindow):
         self.edit_menu = self.menuBar().addMenu("Edit")
         # Add/remove option
         self.add_remove_option = self.edit_menu.addAction("Add/Remove segments")
-        self.add_remove_option.triggered.connect(lambda: AddRemoveSegmentDialog(self).open())
+        self.add_remove_dialog = AddRemoveSegmentDialog(self)
+        self.add_remove_option.triggered.connect(self.add_remove_dialog.show) # lambda: AddRemoveSegmentDialog(self).open())
         # Copy segment option
         self.copy_option = self.edit_menu.addAction("Copy segment")
         self.copy_dialog = CopySegmentDialog(self)
         self.copy_option.triggered.connect(self.copy_dialog.show)
         # Edit analog and digital labels
         self.labels_option = self.edit_menu.addAction("Edit labels")
-        self.labels_option.triggered.connect(lambda: EditAnaDigLabelsDialog(self).exec())
+        self.edit_labels_dialog = EditAnaDigLabelsDialog(self)
+        self.labels_option.triggered.connect(self.edit_labels_dialog.show) # lambda: EditAnaDigLabelsDialog(self).exec())
         # Edit conversion constant
         self.calculator_option = self.edit_menu.addAction("Calculator")
         self.calculator_dialog = CalculatorDialog(self)
-        self.calculator_option.triggered.connect(lambda: self.calculator_dialog.open())
+        self.calculator_option.triggered.connect(self.calculator_dialog.show) # lambda: self.calculator_dialog.open())
+        # Data plot calibration
+        self.calibrate_plot_option = self.edit_menu.addAction("Calibrate plot")
+        self.calibrate_plot_dialog = PlotCalibrateDialog()
+        self.calibrate_plot_option.triggered.connect(self.calibrate_plot_dialog.show) # lambda: self.calibrate_plot_dialog.open())
 
         # Settings menu
         # Connections option
@@ -258,6 +264,7 @@ class MainWindow(QMainWindow):
             self.upload_button.setEnabled(False)
             self.run_button.setEnabled(False)
             self.stop_button.setEnabled(True)
+            self.data_plot_thread.plot.show()
         except:
             self.announcer.appendPlainText("No serial port found")
 

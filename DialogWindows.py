@@ -16,7 +16,7 @@ class OpenScanDialog(QFileDialog):
             # if main_window.mass_button.isChecked() == True:
             #     main_window.frequency_button.setChecked(True)
             # Get file name from text box
-            self.file_name = self.getOpenFileName(filter='Scan Files (*.mcl);;Text Files (*.txt)')[0]
+            self.file_name = self.getOpenFileName(filter='Scan Files (*.scan);;Text Files (*.txt);;All Files (*.*)')[0]
             # Open file for reading
             self.file = open(self.file_name, 'r')
             # Read data from file
@@ -35,7 +35,7 @@ class SaveScanDialog(QFileDialog):
             # if main_window.mass_button.isChecked() == True:
             #     main_window.frequency_button.setChecked(True)
             # Get file name from text box
-            self.file_name = self.getSaveFileName(filter='Scan Files (*.mcl);;Text Files (*.txt)')[0]
+            self.file_name = self.getSaveFileName(filter='Scan Files (*.scan);;Text Files (*.txt)')[0]
             # Create file for writing
             self.file = open(self.file_name, 'w')
             # Write json to file
@@ -45,7 +45,7 @@ class SaveScanDialog(QFileDialog):
             # Grab scan area picture
             self.scan_pic = main_window.scan_area.widget().grab()
             # Use same file name but replace file extensions with picture extension
-            self.scan_pic_file_name = self.file_name.replace('.mcl', '.jpg')
+            self.scan_pic_file_name = self.file_name.replace('.scan', '.jpg')
             # Save picture file
             self.scan_pic.save(self.scan_pic_file_name, 'jpg')
 
@@ -538,3 +538,45 @@ class CalculatorDialog(QDialog):
     #     self.main_window.default_low_v = self.low_v_box.text()
     #     self.main_window.default_duty_cycle = self.d_box.text()
     #     self.main_window.default_q_z = self.q_z_box.text()
+
+class PlotCalibrateDialog(QDialog):
+    def __init__(self):
+        super(PlotCalibrateDialog, self).__init__()
+        self.setWindowFlags(Qt.WindowStaysOnTopHint)
+        # Make layout
+        self.setLayout(QHBoxLayout())
+        # Add table to layout
+        NUM_ROWS = 5
+        NUM_COLS = 2
+        self.peak_table = QTableWidget(NUM_ROWS, NUM_COLS)
+        self.peak_table.setFixedHeight(HEIGHT * (NUM_ROWS + 1) + 2)
+        self.peak_table.setFixedWidth(WIDTH * NUM_COLS + 2)
+        self.peak_table.verticalHeader().setDefaultSectionSize(HEIGHT)
+        self.peak_table.verticalHeader().hide()
+        self.peak_table.horizontalHeader().setDefaultSectionSize(WIDTH)
+        self.peak_table.setHorizontalHeaderLabels(['x', 'm/z'])
+        self.layout().addWidget(self.peak_table)
+        # Add parameter layout to layout
+        self.parameter_layout = QGridLayout()
+        self.layout().addLayout(self.parameter_layout)
+        # Add slope parameter to layout
+        self.parameter_layout.addWidget(QLabel("Slope"), 0, 0)
+        self.slope_box = QLineEdit()
+        self.slope_box.setEnabled(False)
+        self.parameter_layout.addWidget(self.slope_box, 0, 1)
+        # Add intercept parameter to layout
+        self.parameter_layout.addWidget(QLabel("Intercept"), 1, 0)
+        self.intercept_box = QLineEdit()
+        self.intercept_box.setEnabled(False)
+        self.parameter_layout.addWidget(self.intercept_box, 1, 1)
+        # Add R^2 result to layout
+        self.parameter_layout.addWidget(QLabel("R^2"), 2, 0)
+        self.r_2_box = QLineEdit()
+        self.r_2_box.setEnabled(False)
+        self.parameter_layout.addWidget(self.r_2_box, 2, 1)
+        
+    def update(self):
+        calculateSlope()
+        calculateIntercept()
+        calculateR2()
+        

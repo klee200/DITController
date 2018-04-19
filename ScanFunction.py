@@ -237,7 +237,7 @@ class ScanFunctionSegment(QWidget):
 
         # Create label and box for duration
         self.duration_label = QLabel("Duration (ms)")
-        self.duration_box = QLineEdit("10")
+        self.duration_box = QLineEdit("0")
         self.duration_label.setFixedWidth(WIDTH)
         self.duration_box.setFixedWidth(WIDTH)
         self.duration_box.textChanged.connect(self.isChanged)
@@ -287,7 +287,7 @@ class ScanFunctionSegment(QWidget):
             self.analog_table.item(row, 0).setFlags(Qt.ItemIsSelectable)
         # Set up boxes
         for row in range(ANALOG_ROWS):
-            self.analog_table.setCellWidget(row, 1, QLineEdit())
+            self.analog_table.setCellWidget(row, 1, QLineEdit("0"))
 
         # Create table for digital outputs
         self.digital_table = QTableWidget(DIGITAL_ROWS, 2)
@@ -334,7 +334,10 @@ class ScanFunctionSegment(QWidget):
         # Write name to dictionary
         self.segment_data['Name'] = self.name_box.text()
         # Write duration to dictionary
-        self.segment_data['Duration'] = float(self.duration_box.text())
+        try:
+            self.segment_data['Duration'] = float(self.duration_box.text())
+        except:
+            self.segment_data['Duration'] = 0
         # Write data record condition to dictionary
         self.segment_data['Record'] = self.data_record_box.currentText()
 
@@ -349,15 +352,12 @@ class ScanFunctionSegment(QWidget):
             try:
                 self.segment_data['Analog'].append(float(self.analog_table.cellWidget(row, 1).text()))
             except:
-                self.segment_data['Analog'].append(None)
+                self.segment_data['Analog'].append(0)
 
         # Read digital values from table
         self.segment_data['Digital'] = []
         for row in range(self.digital_table.rowCount()):
-            try:
-                self.segment_data['Digital'].append(self.digital_table.cellWidget(row, 1).currentText())
-            except:
-                self.segment_data['Digital'].append(None)
+            self.segment_data['Digital'].append(self.digital_table.cellWidget(row, 1).currentText())
 
         # Return segment dictionary
         return self.segment_data
@@ -405,11 +405,11 @@ class OutputParameterLayout(QGridLayout):
         # Create parameters
         self.parameter_dict = OrderedDict()
         # self.parameter_dict['Type'] = [QLabel(), QComboBox()]
-        self.parameter_dict['Start'] = [QLabel('  Start (Hz)'), QLineEdit()]
-        self.parameter_dict['End'] = [QLabel('  End (Hz)'), QLineEdit()]
-        self.parameter_dict['Duty Cycle'] = [QLabel('  Duty Cycle (%)'), QLineEdit()]
+        self.parameter_dict['Start'] = [QLabel('  Start (Hz)'), QLineEdit("0")]
+        self.parameter_dict['End'] = [QLabel('  End (Hz)'), QLineEdit("0")]
+        self.parameter_dict['Duty Cycle'] = [QLabel('  Duty Cycle (%)'), QLineEdit("0")]
         self.parameter_dict['Tickle'] = [QLabel('Excitation ' + str(number+1)), QComboBox()]
-        self.parameter_dict['Amplitude'] = [QLabel('  Amplitude (V)'), QLineEdit()]
+        self.parameter_dict['Amplitude'] = [QLabel('  Amplitude (V)'), QLineEdit("0")]
         self.parameter_dict['Phase'] = [QLabel('  Phase (deg)'), QComboBox()]
 
         # Place widgets in layout
@@ -622,7 +622,7 @@ class OutputParameterLayout(QGridLayout):
                             # Type parameter has current text
                             self.output_data[name] = parameter.currentText()
                         except:
-                            self.output_data[name] = None
+                            self.output_data[name] = 0
         # Write supplementary tickle parameters to dictionary
         # try:
         #     if self.tickle_layout.isHidden() == False:
