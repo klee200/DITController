@@ -518,11 +518,11 @@ class CalculatorDialog(QDialog):
             if float(self.beta_r_box.text()) == inf or float(self.beta_z_box.text()) == inf:
                 None
             elif float(self.beta_z_box.text()) < float(self.beta_select.currentText()):
-                while float(self.beta_z_box.text()) < float(self.beta_select.currentText()) and float(self.beta_r_box.text()) < inf:
+                while float(self.beta_z_box.text()) < float(self.beta_select.currentText()) and float(self.beta_r_box.text()) < inf and float(self.frequency_box.text()) > 0:
                     self.frequency_box.setText(str(float(self.frequency_box.text()) - pow(10, i)))
                 self.frequency_box.setText(str(float(self.frequency_box.text()) + pow(10, i)))
             else:
-                while float(self.beta_z_box.text()) > float(self.beta_select.currentText()) and float(self.beta_z_box.text()) < inf and float(self.beta_r_box.text()) < inf:
+                while float(self.beta_z_box.text()) > float(self.beta_select.currentText()) and float(self.beta_z_box.text()) < inf and float(self.beta_r_box.text()) < inf and float(self.frequency_box.text()) > 0:
                     self.frequency_box.setText(str(float(self.frequency_box.text()) + pow(10, i)))
                 self.frequency_box.setText(str(float(self.frequency_box.text()) - pow(10, i)))
 
@@ -546,16 +546,21 @@ class PlotCalibrateDialog(QDialog):
         # Make layout
         self.setLayout(QHBoxLayout())
         # Add table to layout
-        NUM_ROWS = 5
-        NUM_COLS = 2
-        self.peak_table = QTableWidget(NUM_ROWS, NUM_COLS)
-        self.peak_table.setFixedHeight(HEIGHT * (NUM_ROWS + 1) + 2)
-        self.peak_table.setFixedWidth(WIDTH * NUM_COLS + 2)
+        self.NUM_ROWS = 5
+        self.NUM_COLS = 2
+        self.peak_table = QTableWidget(self.NUM_ROWS, self.NUM_COLS)
+        self.peak_table.setFixedHeight(HEIGHT * (self.NUM_ROWS + 1) + 2)
+        self.peak_table.setFixedWidth(WIDTH * self.NUM_COLS + 2)
         self.peak_table.verticalHeader().setDefaultSectionSize(HEIGHT)
         self.peak_table.verticalHeader().hide()
         self.peak_table.horizontalHeader().setDefaultSectionSize(WIDTH)
         self.peak_table.setHorizontalHeaderLabels(['x', 'm/z'])
         self.layout().addWidget(self.peak_table)
+        # Connect table to value update
+        for i in range(self.NUM_ROWS):
+            for j in range(self.NUM_COLS):
+                self.peak_table.setItem(i, j, QTableWidgetItem())
+        self.peak_table.itemChanged.connect(self.update)
         # Add parameter layout to layout
         self.parameter_layout = QGridLayout()
         self.layout().addLayout(self.parameter_layout)
@@ -576,7 +581,37 @@ class PlotCalibrateDialog(QDialog):
         self.parameter_layout.addWidget(self.r_2_box, 2, 1)
         
     def update(self):
-        calculateSlope()
-        calculateIntercept()
-        calculateR2()
+        x = []
+        y = []
+        for i in range(self.NUM_ROWS):
+            try:
+                x.append(float(self.peak_table.item(i, 0).text()))
+                y.append(float(self.peak_table.item(i, 1).text()))
+            except:
+                None
+        self.calculateSlope(x, y)
+        self.calculateIntercept(x, y)
+        self.calculateR2(x, y)
         
+    def calculateIntercept(self, x, y):
+        try:
+            intercept = (sum(y) * sum([i**2 for i in x]) - sum(x) * sum([i * j for i, j in zip(x, y)])) / (len(x) * sum([i**2 for i in x]) - sum(x)**2)
+        except:
+            intercept = None
+        self.intercept_box.setText(str(intercept))
+        
+    def calculateSlope(self, x, y):
+        try:
+            slope = (len(x) * sum([i * j for i, j in zip(x, y)]) - sum(x) * sum(y)) / (len(x) * sum([i**2 for i in x]) - sum(x)**2)
+        except:
+            slope = None
+        self.slope_box.setText(str(slope))
+        
+    def calculateR2(self, x, y):
+        try:
+            res = sum([(i - j)**2 for i, j in zip(y, [float(self.slope_box.text()) * i + float(self.intercept_box.text()) for i in x])])
+            tot = sum([(i - sum(y)/len(y))**2 for i in y])
+            r2 = 1 - res / tot
+        except:
+            r2 = None
+        self.r_2_box.setText(str(r2))
