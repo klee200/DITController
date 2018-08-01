@@ -4,53 +4,119 @@ from PyQt5.QtGui import *
 import pyqtgraph as pg
 import numpy as np
 from time import *
+from threading import Lock
+import serial
 import pdb
 from threading import Thread, Condition, Event
+from queue import *
 
-# class DataPlot(Thread):
-#     def __init__(self):
-#         super(DataPlot, self).__init__()
-#         self.plot = pg.PlotWidget()
-#         self.data = []
-#         self.plot.setLabel('bottom', text='Data point')
-#         self.plot.setLabel('left', text='Intensity')
-#         # Thread for updating plot
-#         self.data_event = Event()
-#
-#     # def updatePlotData(self, data):
-#     #     self.data = data
-#     #     self.data_event.set()
-#
-#     def run(self):
-#         while True:
-#             self.data_event.wait()
-#             plot_data = []
-#             hb = True
-#             for byte in self.data:
-#                 if hb:
-#                     high_byte = byte
-#                     hb = False
-#                 else:
-#                     low_byte = byte
-#                     plot_data.append(high_byte * 256 + low_byte)
-#                     hb = True
-#             self.plot.clear()
-#             self.plot.plot(range(len(plot_data)), plot_data)
-#             self.data_event.clear()
 
-class DataPlotThread(Thread):
-    def __init__(self):
-        super(DataPlotThread, self).__init__()
+class DataPort(serial.Serial):
+    def __init__(self, port_choice, main_window):
+        # Call parent constructor
+        super(DataPort, self).__init__(port=port_choice)
+        # Allow class to access announcer in main window
+        self.main_window = main_window
+        self.announcer = main_window.announcer
+        # Lock for managing data
+        # self.data_lock = Lock()
+        # self.data_lock.acquire()
+        # Thread for reading in data
+        # pyqtRemoveInputHook()
+        # pdb.set_trace()
+        self.data_thread = DataThread(self)
+        self.data_thread.start()
+        
+    # def startDataThread(self):
+        # self.data_lock.release()
+        
+    # def endDataThread(self):
+        # self.data_lock.acquire()
+        
+class DataThread(QThread):
+    # Update plot signal
+    update_signal = pyqtSignal(object)
+    
+    def __init__(self, data_port):
+        super(DataThread, self).__init__()
         self.daemon = True
-        self.data = b''
+        self.data_port = data_port
+        self.master_port = self.data_port.main_window.connection_dialog.master_serial
+        self.time = clock()
+        self.n = 0
+        # Connect signal
+        self.update_signal.connect(self.data_port.main_window.data_plot.updatePlot)
+        # Structure for holding data
+        self.num_data = 5
+        self.data_string = [b'' for n in range(self.num_data)]
+        self.data = [[] for n in range(self.num_data)]
+        self.master_port_access = False
+        self.lock = Lock()
+        
+    def run(self):
+        # n = 0
+        while self.data_port.is_open:
+            if self.data_port.in_waiting:
+                self.data_port.reset_input_buffer()
+            while self.master_port_access:
+                # t = self.master_port.read()
+                if self.master_port.read() == b'\x01':
+                    self.data_port.reset_input_buffer()
+                    time = clock()
+                    while self.master_port.in_waiting < 1:
+                        self.data_string[self.n] += self.data_port.read(self.data_port.in_waiting)
+                else:
+                    # print(clock() - time)
+                    # self.data[self.n] = [self.data_string[self.n][i * 2] + self.data_string[self.n][i * 2 + 1] * 256 for i in range(int(len(self.data_string[self.n]) / 2))]
+                    self.update_signal.emit(self.data_string[self.n])
+                    # print("length of", self.n, ":", len(self.data_string[self.n]))
+                    # print("not read:", self.data_port.in_waiting)
+                    self.n = (self.n + 1) % self.num_data
+                    self.data_string[self.n] = b''
+                    # self.data_port.reset_input_buffer()
+    
+    def readData(self):
+        # self.data_port.reset_input_buffer()
+        # with self.lock:
+            # while self.trigger:
+                # self.data_string[self.n] += self.data_port.read(2)
+            # print(len(self.data_string[self.n]))
+        # print("length:", len(self.data_string[self.n]))
+        # print("not read:", self.data_port.in_waiting)
+        self.n = (self.n + 1) % self.num_data
+        
+    def processData(self):
+        with self.lock:
+            self.data[self.n] = [self.data_string[self.n][i * 2] * 256 + self.data_string[self.n][i * 2 + 1] for i in range(int(len(self.data_string[self.n]) / 2))]
+            next = (self.n + 1) % self.num_data
+            self.data_string[next] = b''
+            if clock() - self.time > 1:
+                self.update_signal.emit(self.data[self.n])
+                self.time = clock()
+                    
+class DataPlot(pg.PlotWidget):
+    def __init__(self, main_window):
+        super(DataPlot, self).__init__()
+        self.setLabel('bottom', text='Data point')
+        self.setLabel('left', text='Intensity')
+
+    def updatePlot(self, data_string):
+        data = [data_string[i * 2] + data_string[i * 2 + 1] * 256 for i in range(int(len(data_string) / 2))]
+        self.plot(range(len(data)), data, clear = True)
+
+# class DataPlotThread(Thread):
+    # def __init__(self):
+        # super(DataPlotThread, self).__init__()
+        # self.daemon = True
+        # self.data = []
         # Create time axis label
-        self.plot = pg.PlotWidget()
-        self.plot.setLabel('bottom', text='Data point')
-        self.plot.setLabel('left', text='Intensity')
-        self.plot.setDownsampling(auto=True, mode='mean')
-        self.plot.setClipToView(True)
+        # self.plot = pg.PlotWidget()
+        # self.plot.setLabel('bottom', text='Data point')
+        # self.plot.setLabel('left', text='Intensity')
+        # self.plot.setDownsampling(auto=True, mode='mean')
+        # self.plot.setClipToView(True)
         # Thread for updating plot
-        self.data_event = Event()
+        # self.plot_event = Event()
         # self.updatePlotThread = Thread(target=self.updatePlot)
         # self.updatePlotThread.start()
 
@@ -65,16 +131,17 @@ class DataPlotThread(Thread):
     #     # self.clear()
     #     # self.plot(range(len(self.data)), self.data)
     #     self.data_event.set()
-
-    def run(self):
-        start_time = clock()
-        while True:
-            self.data_event.wait()
-            if clock() - start_time >= 1:
-                plot_data = [] #np.array([e * 256 for e in self.data[0:len(self.data):2]]) + np.array([e for e in self.data[1:len(self.data):2]])
+    
+    # def run(self):
+        # start_time = clock()
+        # while True:
+            # self.data_event.wait()
+            # if clock() - start_time >= 1:
+                # self.updatePlot()
+                # plot_data = [] #np.array([e * 256 for e in self.data[0:len(self.data):2]]) + np.array([e for e in self.data[1:len(self.data):2]])
                 # hb = True
-                for index in range(int(len(self.data) / 2)):
-                    plot_data.append(self.data[index * 2] * 256 + self.data[index * 2 + 1])
+                # for index in range(int(len(self.data) / 2)):
+                    # plot_data.append(self.data[index * 2] * 256 + self.data[index * 2 + 1])
                 #     if hb:
                 #         high_byte = byte
                 #         hb = False
@@ -82,7 +149,8 @@ class DataPlotThread(Thread):
                 #         low_byte = byte
                 #         plot_data.append(high_byte * 256 + low_byte)
                 #         hb = True
-                self.plot.clear()
-                self.plot.plot(range(len(plot_data)), plot_data)
-                start_time = clock()
-                self.data_event.clear()
+            # plot_data = q.get()
+            # self.plot.clear()
+            # self.plot.plot(range(len(plot_data)), plot_data)
+                # start_time = clock()
+            # self.data_event.clear()

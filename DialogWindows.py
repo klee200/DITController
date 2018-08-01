@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from Communication import SerialPort
+from DataPlot import DataPort
 from ScanFunction import *
 import pdb
 import numpy as np
@@ -85,7 +86,7 @@ class ConnectionDialog(QDialog):
         # Create boxes
         self.master_box = QLineEdit("COM7")
         self.main_layout.addWidget(self.master_box, 0, 1)
-        self.slave_box = QLineEdit()
+        self.slave_box = QLineEdit("COM6")
         self.main_layout.addWidget(self.slave_box, 3, 1)
         # Create buttons
         self.master_connect_button = QPushButton('Connect Master')
@@ -99,8 +100,8 @@ class ConnectionDialog(QDialog):
         # Button functions
         self.master_connect_button.clicked.connect(lambda: self.connectMaster(self.master_box.text()))
         self.master_disconnect_button.clicked.connect(self.disconnectMaster)
-        # self.slave_connect_button.clicked.connect(self.connectSlave)
-        # self.slave_disconnect_button.clicked.connect(self.disconnectSlave)
+        self.slave_connect_button.clicked.connect(lambda: self.connectSlave(self.slave_box.text()))
+        self.slave_disconnect_button.clicked.connect(self.disconnectSlave)
         # Create line
         self.line = QFrame()
         self.line.setFrameShape(QFrame.HLine)
@@ -122,6 +123,22 @@ class ConnectionDialog(QDialog):
             self.master_serial.close()
             self.master_serial = None
             self.announcer.appendPlainText("Master serial disconnected")
+        except:
+            self.announcer.appendPlainText("No connection found")
+            
+    def connectSlave(self, port_choice):
+        try:
+            self.slave_serial = DataPort(port_choice, self.main_window)
+            self.announcer.appendPlainText("Data serial connected")
+        except:
+            self.announcer.appendPlainText("No serial port found")
+            
+    def disconnectSlave(self):
+        try:
+            self.slave_serial.close()
+            del(self.slave_serial)
+            # self.slave_serial = None
+            self.announcer.appendPlainText("Data serial disconnected")
         except:
             self.announcer.appendPlainText("No connection found")
 
@@ -253,10 +270,10 @@ class CalculatorDialog(QDialog):
         self.amu = 1.66e-27
         # Make labels and boxes
         self.layout().addWidget(QLabel("r\u2080 (cm)"), 0, 0)
-        self.r_box = QLineEdit("0.849")
+        self.r_box = QLineEdit("0.707")
         self.layout().addWidget(self.r_box, 0, 1)
         self.layout().addWidget(QLabel("z\u2080 (cm)"), 1, 0)
-        self.z_box = QLineEdit("0.681")
+        self.z_box = QLineEdit("0.774")
         self.layout().addWidget(self.z_box, 1, 1)
         self.layout().addWidget(QLabel("High V (V)"), 0, 2)
         self.high_v_box = QLineEdit("300")

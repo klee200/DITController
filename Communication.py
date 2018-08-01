@@ -1,11 +1,39 @@
 from threading import Lock
+from PyQt5.QtCore import *
 
 import serial
 import pdb
 from DataPlot import *
 
 
+class SerialThread(QThread):
+    read_data_signal = pyqtSignal()
+    process_data_signal = pyqtSignal()
+    
+    def __init__(self, serial_port):
+        super(SerialThread, self).__init__()
+        self.daemon = True
+        self.serial_port = serial_port
+        self.read_data_signal.connect(self.serial_port.main_window.connection_dialog.slave_serial.data_thread.readData)
+        self.process_data_signal.connect(self.serial_port.main_window.connection_dialog.slave_serial.data_thread.processData)
+        
+    def run(self):
+        while self.serial_port.is_open:
+            with self.serial_port.end_data_lock:
+                while self.serial_port.data_read_event:
+                    if self.serial_port.in_waiting:
+                        dt = self.serial_port.read(1)
+                        print(dt)
+                        # if dt == b'\x01':
+                            # self.serial_port.main_window.connection_dialog.slave_serial.data_thread.trigger = True
+                            # self.read_data_signal.emit()
+                        # elif dt == b'\x00':
+                            # self.serial_port.main_window.connection_dialog.slave_serial.data_thread.trigger = False
+                            # self.process_data_signal.emit()
+
+
 class SerialPort(serial.Serial):
+    
     def __init__(self, port_choice, main_window):
         # Call parent constructor
         super(SerialPort, self).__init__(port=port_choice, baudrate=2000000, timeout=5)
@@ -17,13 +45,16 @@ class SerialPort(serial.Serial):
         # self.read_thread = Thread(target=self.readThread)
         # self.read_thread.start()
         # Create thread for reading data
-        self.data_lock = Lock()
+        # self.data_lock = Lock()
         self.data_read_event = False
-        self.end_data_lock = Lock()
-        self.end_data_lock.acquire()
-        self.data_thread = Thread(target=self.dataThread, daemon=True)
-        self.data_thread.start()
+        # self.end_data_lock = Lock()
+        # self.end_data_lock.acquire()
+        # self.data_thread = Thread(target=self.dataThread, daemon=True)
+        # self.data_thread.start()
+        self.data_trigger = False
         # self.data_active = False
+        # self.serial_thread = SerialThread(self)
+        # self.serial_thread.start()
 
     def serialWrite(self, output):
         # self.read_active = False
@@ -49,10 +80,10 @@ class SerialPort(serial.Serial):
     def startDataRead(self, stop_string):
         serial_read_input = []
         try:
-            self.serialWrite('R')
-            serial_read_input.append(self.readline().decode('ascii').strip())
-            while serial_read_input[-1] != stop_string:
-                serial_read_input.append(self.readline().decode('ascii').strip())
+            # self.serialWrite('R')
+            # serial_read_input.append(self.readline().decode('ascii').strip())
+            # while serial_read_input[-1] != stop_string:
+                # serial_read_input.append(self.readline().decode('ascii').strip())
             self.data_read_event = True
             self.end_data_lock.release()
         except:
@@ -62,45 +93,54 @@ class SerialPort(serial.Serial):
     def endDataRead(self, stop_string):
         try:
             self.data_read_event = False
-            self.serialWrite('S')
+            self.data_trigger = False
+            # self.serialWrite('S')
             # sleep(self.timeout * 2)
             # with self.end_data_lock:
             self.end_data_lock.acquire()
                 # pdb.set_trace()
                 # while stop_string not in str(self.main_window.data_plot_thread.data) and self.in_waiting:
-            data_clean_up = b''
-            while stop_string not in str(data_clean_up):
+            # data_clean_up = b''
+            # while stop_string not in str(data_clean_up):
                 # pdb.set_trace()
-                data_clean_up += self.read(self.in_waiting)
-            print("clean up: " + str(data_clean_up))
+                # data_clean_up += self.read(self.in_waiting)
+            # print("clean up: " + str(data_clean_up))
             serial_read_input = stop_string
         except:
             serial_read_input = "Failed to stop scan function"
         return serial_read_input
 
-    def dataThread(self):
-        while self.is_open:
+    # def dataThread(self):
+        # while self.is_open:
             # self.data_read_event.wait()
-            with self.end_data_lock:
-                data_read = b''
-                while self.data_read_event:
+            # with self.end_data_lock:
+                # data_read = b''
+                # while self.data_read_event:
+                    # if self.in_waiting:
+                        # dt = self.readline().decode('ascii').strip()
+                        # if dt == "$":
+                            # self.data_trigger = True
+                            # self.read_data_signal.emit()
+                        # elif dt == "#":
+                            # self.data_trigger = False
+                            # self.process_data_signal.emit()
                     # pdb.set_trace()
                     # data_read = b''
                     # if self.in_waiting:
-                    data_read += self.read(self.in_waiting)
+                    # data_read += self.read(self.in_waiting)
                     # while b'stop' not in data_read:
                     #     # data_read = self.read(900)
                     #     # if b'Stopping scan function' not in data_read:
                     #     data_read += self.read_until(b'stop', 0.00001)
                     #     # if not self.main_window.data_plot_thread.data_event.is_set():
-                    if b'stop' in data_read:
-                        self.main_window.data_plot_thread.data = data_read.strip(b'stop')
-                        self.main_window.data_plot_thread.data_event.set()
+                    # if b'stop' in data_read:
+                        # self.main_window.data_plot_thread.data = data_read.strip(b'stop')
+                        # self.main_window.data_plot_thread.data_event.set()
                         # print([e for e in self.main_window.data_plot_thread.data])
                         # print(self.main_window.data_plot_thread.data)
                         # print(len(self.main_window.data_plot_thread.data))
                         # print(self.in_waiting)
-                        data_read = b''
+                        # data_read = b''
 
     # def readThread(self):
     #     while self.is_open:
@@ -166,4 +206,4 @@ class SerialPort(serial.Serial):
                 # if self.read_active:
                 #     self.serial_read_condition.notify()
                 #     self.serial_read_condition.wait()
-
+                    

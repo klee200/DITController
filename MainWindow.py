@@ -51,10 +51,13 @@ class MainWindow(QMainWindow):
 
         # Bottom left displays plot of data
         # Add plot to left half
-        self.data_plot_thread = DataPlotThread()
-        self.left_splitter.addWidget(self.data_plot_thread.plot)
-        self.data_plot_thread.plot.hide()
-        self.data_plot_thread.start()
+        self.data_plot = DataPlot(self)
+        self.left_splitter.addWidget(self.data_plot)
+        # self.data_plot.hide()
+        # self.data_plot_thread = DataPlotThread()
+        # self.left_splitter.addWidget(self.data_plot_thread.plot)
+        # self.data_plot_thread.plot.hide()
+        # self.data_plot_thread.start()
 
         # # Top right displays frequency and m/z options
         # self.conversion_layout = QGridLayout()
@@ -191,56 +194,17 @@ class MainWindow(QMainWindow):
     #         self.scan_function.convertToMass(conversion_constant, tickle_constant)
 
     def downloadScanFunction(self):
-        # # Check validity of scan function
-        # self.valid_scan_function = True
-        # # Count the number of mass analysis steps total
-        # self.num_mass_anaylsis_segments = 0
-        # for segment in self.scan_function.scan_list:
-        #     # Count the number of ramp outputs in each segment
-        #     self.num_ramps = 0
-        #     for output in segment.output_list:
-        #         if output.parameter_dict["Type"][1].currentText() == "Mass Analysis":
-        #             self.num_mass_anaylsis_segments += 1
-        #         if output.parameter_dict["Type"][1].currentText() in ["Ramp", "Mass Analysis", "Isolation"]:
-        #             self.num_ramps += 1
-        #     # Count the number of output 3 functions (including CID and Isolation on 1 and 2)
-        #     self.num_output3 = 0
-        #     if segment.output_list[2].parameter_dict["Type"][1].currentText() != "None":
-        #         self.num_output3 += 1
-        #     for output in segment.output_list:
-        #         if output.parameter_dict["Type"][1].currentText() in ["CID", "Isolation"]:
-        #             self.num_output3 += 1
-        #     # If more than one ramp segment found, the scan function is invalid
-        #     if self.num_ramps > 1 or self.num_output3 > 1:
-        #         self.valid_scan_function = False
-        # Only one allowed mass analysis step in scan function
-        # if self.num_mass_anaylsis_segments > 1:
-        #     self.valid_scan_function = False
-
-        # if self.valid_scan_function == False:
-        #     self.announcer.appendPlainText("Invalid scan function")
-        # else:
-            # # Make sure that numbers are in frequency for download
-            # if self.mass_button.isChecked() == True:
-            #     self.frequency_button.toggle()
-            # Convert list into json string
-            scan_function_data_json = json.dumps(self.scan_function.convertToDictionary()['Data'])
-            # record_duration = 0
-            # data_point_per_ms = 10
-            # for segment in self.scan_function.scan_list:
-            #     record_duration = record_duration + float(segment.duration_box.text())
-            # self.announcer.appendPlainText(str(self.record_duration))
-            try:
-                # Send json string to Arduino
-                self.connection_dialog.master_serial.serialWrite('D')
-                self.connection_dialog.master_serial.serialWrite(scan_function_data_json)
-                read_input_list = self.connection_dialog.master_serial.serialRead('Download finished')
-                for read_input in read_input_list:
-                    self.announcer.appendPlainText(read_input)
-                # self.connection_dialog.master_serial.data_length = self.record_duration * data_point_per_ms
-            except:
-                # If serial write fails, signal error
-                self.announcer.appendPlainText("No serial port found")
+        scan_function_data_json = json.dumps(self.scan_function.convertToDictionary()['Data'])
+        try:
+            # Send json string to Arduino
+            self.connection_dialog.master_serial.serialWrite('D')
+            self.connection_dialog.master_serial.serialWrite(scan_function_data_json)
+            read_input_list = self.connection_dialog.master_serial.serialRead('Download finished')
+            for read_input in read_input_list:
+                self.announcer.appendPlainText(read_input)
+        except:
+            # If serial write fails, signal error
+            self.announcer.appendPlainText("No serial port found")
 
     def uploadScanFunction(self):
         try:
@@ -253,29 +217,33 @@ class MainWindow(QMainWindow):
 
     def runScanFunction(self):
         try:
-            # self.connection_dialog.master_serial.serialWrite('R')
-            read_input_list = self.connection_dialog.master_serial.startDataRead('Running scan function')
-            for read_input in read_input_list:
-                self.announcer.appendPlainText(read_input)
+            self.connection_dialog.master_serial.serialWrite('R')
+            # read_input_list = self.connection_dialog.master_serial.serialRead('Running scan function')
+            self.connection_dialog.slave_serial.data_thread.master_port_access = True
+            # for read_input in read_input_list:
+                # self.announcer.appendPlainText(read_input)
             # self.connection_dialog.master_serial.read_active = False
             # self.connection_dialog.master_serial.data_active = True
             # if read_input == "Running scan function":
+            # self.connection_dialog.slave_serial.startDataThread()
             self.download_button.setEnabled(False)
             self.upload_button.setEnabled(False)
             self.run_button.setEnabled(False)
             self.stop_button.setEnabled(True)
-            self.data_plot_thread.plot.show()
+            self.data_plot.show()
         except:
             self.announcer.appendPlainText("No serial port found")
 
     def stopScanFunction(self):
         try:
-            # self.connection_dialog.master_serial.serialWrite('S')
-            read_input = self.connection_dialog.master_serial.endDataRead('Stopping scan function')
-            self.announcer.appendPlainText(read_input)
+            self.connection_dialog.slave_serial.data_thread.master_port_access = False
+            self.connection_dialog.master_serial.serialWrite('S')
+            # self.announcer.appendPlainText(read_input)
             # self.connection_dialog.master_serial.data_active = False
             # self.connection_dialog.master_serial.read_active = True
             # if read_input == "Stopping scan function":
+            # self.connection_dialog.slave_serial.endDataThread()
+            # read_input_list = self.connection_dialog.master_serial.serialRead('Stopping scan function')
             self.download_button.setEnabled(True)
             self.upload_button.setEnabled(True)
             self.run_button.setEnabled(True)
