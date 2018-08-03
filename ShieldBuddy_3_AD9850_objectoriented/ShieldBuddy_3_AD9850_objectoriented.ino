@@ -568,8 +568,8 @@ void ScanFunction::clear()
   for(uint8_t i = 0; i < current_size; i++)
   {
     delete segment_list[i];
-    current_size = 0;
   }
+  current_size = 0;
 }
 
 void ScanFunction::run()

@@ -54,7 +54,7 @@ class MainWindow(QMainWindow):
         # Add plot to left half
         self.data_plot = DataPlot(self)
         self.left_splitter.addWidget(self.data_plot)
-        # self.data_plot.hide()
+        self.data_plot.hide()
         # self.data_plot_thread = DataPlotThread()
         # self.left_splitter.addWidget(self.data_plot_thread.plot)
         # self.data_plot_thread.plot.hide()
@@ -218,9 +218,12 @@ class MainWindow(QMainWindow):
 
     def runScanFunction(self):
         try:
+            self.connection_dialog.slave_serial.data_thread.master_port_access = True
+        except:
+            None
+        try:
             self.connection_dialog.master_serial.serialWrite('R')
             # read_input_list = self.connection_dialog.master_serial.serialRead('Running scan function')
-            self.connection_dialog.slave_serial.data_thread.master_port_access = True
             # for read_input in read_input_list:
                 # self.announcer.appendPlainText(read_input)
             # self.connection_dialog.master_serial.read_active = False
@@ -238,6 +241,9 @@ class MainWindow(QMainWindow):
     def stopScanFunction(self):
         try:
             self.connection_dialog.slave_serial.data_thread.master_port_access = False
+        except:
+            None
+        try:
             sleep(1)
             self.connection_dialog.master_serial.serialWrite('S')
             self.connection_dialog.master_serial.reset_input_buffer()
