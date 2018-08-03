@@ -3,6 +3,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 import pyqtgraph as pg
 import numpy as np
+from operator import add
 from time import *
 from threading import Lock
 import serial
@@ -56,24 +57,27 @@ class DataThread(QThread):
     def run(self):
         # n = 0
         while self.data_port.is_open:
-            if self.data_port.in_waiting:
-                self.data_port.reset_input_buffer()
+            # if self.data_port.in_waiting:
+            self.data_port.reset_input_buffer()
             while self.master_port_access:
-                # t = self.master_port.read()
-                if self.master_port.read() == b'\x01':
-                    self.data_port.reset_input_buffer()
-                    time = clock()
-                    while self.master_port.in_waiting < 1:
+                self.data_string[self.n] += self.data_port.read(self.data_port.in_waiting)
+                if self.master_port.in_waiting:
+                    self.master_port.reset_input_buffer()
+                    # self.data_port.reset_input_buffer()
+                    # while t == b'\x01':
+                        # if self.master_port.in_waiting:
+                        # try:
+                            # t = self.master_port.read()
+                        # self.data_string[self.n] += self.data_port.read(self.data_port.in_waiting)
+                        # except:
+                            # self.data_string[self.n] += self.data_port.read(self.data_port.in_waiting)
+                    while self.data_port.in_waiting:
                         self.data_string[self.n] += self.data_port.read(self.data_port.in_waiting)
-                else:
-                    # print(clock() - time)
-                    # self.data[self.n] = [self.data_string[self.n][i * 2] + self.data_string[self.n][i * 2 + 1] * 256 for i in range(int(len(self.data_string[self.n]) / 2))]
-                    self.update_signal.emit(self.data_string[self.n])
+                    self.update_signal.emit(self.data_string)
                     # print("length of", self.n, ":", len(self.data_string[self.n]))
                     # print("not read:", self.data_port.in_waiting)
                     self.n = (self.n + 1) % self.num_data
                     self.data_string[self.n] = b''
-                    # self.data_port.reset_input_buffer()
     
     def readData(self):
         # self.data_port.reset_input_buffer()
@@ -87,7 +91,7 @@ class DataThread(QThread):
         
     def processData(self):
         with self.lock:
-            self.data[self.n] = [self.data_string[self.n][i * 2] * 256 + self.data_string[self.n][i * 2 + 1] for i in range(int(len(self.data_string[self.n]) / 2))]
+            self.data[self.n] = [self.data_string[self.n][i * 2] + self.data_string[self.n][i * 2 + 1] * 256 for i in range(int(len(self.data_string[self.n]) / 2))]
             next = (self.n + 1) % self.num_data
             self.data_string[next] = b''
             if clock() - self.time > 1:
@@ -101,8 +105,12 @@ class DataPlot(pg.PlotWidget):
         self.setLabel('left', text='Intensity')
 
     def updatePlot(self, data_string):
-        data = [data_string[i * 2] + data_string[i * 2 + 1] * 256 for i in range(int(len(data_string) / 2))]
-        self.plot(range(len(data)), data, clear = True)
+        data = [[data_n[j * 2] + data_n[j * 2 + 1] * 256 for j in range(int(len(data_n) / 2))] for data_n in data_string if len(data_n) > 0]
+        print(len(data))
+        plot_data = [sum(i) for i in zip(*data)]
+        print(len(plot_data))
+        # data = [data_string[j * 2] + data_string[j * 2 + 1] * 256 for j in range(int(len(data_string) / 2))]
+        self.plot(range(len(plot_data)), plot_data, clear = True)
 
 # class DataPlotThread(Thread):
     # def __init__(self):

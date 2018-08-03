@@ -1,5 +1,6 @@
 from DataPlot import *
 from DialogWindows import *
+from time import *
 import pdb
 
 
@@ -237,7 +238,9 @@ class MainWindow(QMainWindow):
     def stopScanFunction(self):
         try:
             self.connection_dialog.slave_serial.data_thread.master_port_access = False
+            sleep(1)
             self.connection_dialog.master_serial.serialWrite('S')
+            self.connection_dialog.master_serial.reset_input_buffer()
             # self.announcer.appendPlainText(read_input)
             # self.connection_dialog.master_serial.data_active = False
             # self.connection_dialog.master_serial.read_active = True

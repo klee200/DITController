@@ -424,7 +424,7 @@ void Segment::setupSegment()
     output_list[i]->updateTickle();
   }
   // Digital
-  Fast_digitalWrite(42, digital[0]);
+//  Fast_digitalWrite(42, digital[0]);
   Fast_digitalWrite(43, digital[1]);
   Fast_digitalWrite(44, digital[2]);
   Fast_digitalWrite(45, digital[3]);
@@ -568,9 +568,8 @@ void ScanFunction::clear()
   for(uint8_t i = 0; i < current_size; i++)
   {
     delete segment_list[i];
-    segment_list[i] = NULL;
+    current_size = 0;
   }
-  current_size = 0;
 }
 
 void ScanFunction::run()
@@ -580,21 +579,28 @@ void ScanFunction::run()
     segment_list[i]->setupSegment();
     if(segment_list[i]->getRecord())
     {
-//      InterruptCore1();
-      data_acquire = true;
+//      data_acquire = true;
+//      SerialASC.write(1);
+      InterruptCore1();
+//      Fast_digitalWrite(42, 1);
     }
     previous_millis = millis();
     while(millis() - previous_millis <= segment_list[i]->getDuration())
     {
       segment_list[i]->run();
     }
-    data_acquire = false;
+//    data_acquire = false;
+//    if(segment_list[i]->getRecord())
+//    {
+//      Fast_digitalWrite(42, 0);
+//      SerialASC.write(0);
+//    }
   }
 }
 
 void ScanFunction::stop()
 {
-  SerialASC.println("Stopping scan function");
+//  SerialASC.println("Stopping scan function");
   if(current_size > 0)
   {
     segment_list[0]->stop();
@@ -662,7 +668,7 @@ void setup() {
   Fast_digitalWrite(4, LOW);
   Fast_digitalWrite(5, HIGH);
   Fast_digitalWrite(5, LOW);
-//  CreateCore1Interrupt(StartDataAcquisition);
+  CreateCore1Interrupt(StartDataAcquisition);
   
   SerialASC.println("Setup complete");
 }
@@ -698,58 +704,75 @@ void loop()
 /* CPU1 Uninitialised Data */
 StartOfUninitialised_CPU1_Variables
 /* Put your CPU1 fast access variables that have no initial values here e.g. uint32 CPU1_var; */
-uint32_t data_length_points;
-uint16_t data;
-byte data_bytes[2];
-unsigned long start_time;
-bool end_signal;
+//uint32_t data_length_points;
+//uint16_t data;
+//byte data_bytes[2];
+//unsigned long start_time;
+//bool start_signal;
+//bool end_signal;
+uint32_t record_duration;
 EndOfUninitialised_CPU1_Variables
 
 /* CPU1 Initialised Data */
 StartOfInitialised_CPU1_Variables
 /* Put your CPU1 fast access variables that have an initial value here e.g. uint32 CPU1_var_init = 1; */
-const byte end_byte[4] = {'s', 't', 'o', 'p'};
+//const byte end_byte[4] = {'s', 't', 'o', 'p'};
 EndOfInitialised_CPU1_Variables
 
 void setup1() {
   // put your setup code for core 1 here, to run once:
-  pinMode(A0, INPUT);
-  analogReadResolution(14);
+//  pinMode(A0, INPUT);
+//  analogReadResolution(14);
+  Fast_digitalWrite(42, 1);
 }
 
 
 void loop1() {
   // put your main code for core 1 here, to run repeatedly:
 //  start_time = micros();
-  while(data_acquire)
-  {
-    if(!end_signal)
-    {
-      end_signal = true;
-    }
-    data = ReadAD0();
-    SerialASC.write(highByte(data));
-    SerialASC.write(lowByte(data));
-  }
-  if(end_signal)
-  {
-    SerialASC.write(end_byte, 4);
-    end_signal = false;
-  }
+//  start_signal = true;
+//  while(data_acquire)
+//  {
+//    if(start_signal)
+//    {
+//      SerialASC.println("$");
+//      start_signal = false;
+//    }
+//    if(!end_signal)
+//    {
+//      end_signal = true;
+//    }
+//    data = ReadAD0();
+//    SerialASC.write(highByte(data));
+//    SerialASC.write(lowByte(data));
+//  }
+//  if(end_signal)
+//  {
+//    SerialASC.println("#");
+////    SerialASC.write(end_byte, 4);
+//    end_signal = false;
+//  }
 }
 
-//void StartDataAcquisition()
-//{
-////  SerialASC.println('#');
-////  SerialASC.println(data_length_points);
-//  start_time = micros();
+void StartDataAcquisition()
+{
+  uint32_t start_time = micros();
+//  SerialASC.write(1);
+  Fast_digitalWrite(42, 1);
+  while(micros() - start_time < record_duration)
+  {
+  }
+  Fast_digitalWrite(42, 0);
+  SerialASC.write(0);
+//  SerialASC.println('#');
+//  SerialASC.println(data_length_points);
 //  for(uint32_t i = 0; i < data_length_points; i++)
 //  {
 //    data = micros() - start_time;
 //    SerialASC.write(highByte(data));
 //    SerialASC.write(lowByte(data));
 //  }
-//}
+}
 
 
 
@@ -788,16 +811,17 @@ void downloadScan()
   JsonArray& scan_list = json_buffer.parseArray(SerialASC);
   if(scan_list.success())
   {
-//    data_length_millis = 0;
+    data_length_millis = 0;
     for(uint8_t i = 0; i < scan_list.size(); i++)
     {
       JsonObject& segment = scan_list[i];
       scan_function.addSegment(segment);
-//      if(scan_function.getSegmentRecord(i))
-//      {
+      if(scan_function.getSegmentRecord(i))
+      {
+        record_duration = scan_function.getSegmentDuration(i) * 1000;
 //        data_length_millis = scan_function.getSegmentDuration(i);
 //        data_length_points = data_point_per_millis * data_length_millis;
-//      }
+      }
     }
     SerialASC.println("Download successful");
   }
@@ -819,7 +843,7 @@ void uploadScan()
 
 void runScan()
 {
-  SerialASC.println("Running scan function");
+//  SerialASC.println("Running scan function");
 //  SerialASC.println(data_length_points);
   char choice = ' ';
   while(choice != 'S')
@@ -840,4 +864,3 @@ void stopScan()
   scan_function.stop();
   return;
 }
-
