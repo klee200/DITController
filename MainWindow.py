@@ -8,9 +8,60 @@ class MainWindow(QMainWindow):
     def __init__(self):
         # Call parent constructor
         super(MainWindow, self).__init__()
-
+        
         # Create scan function object
         self.scan_function = ScanFunction(self)
+        
+        # Create announcer - added to console window below
+        self.announcer = QPlainTextEdit()
+
+        # Create menu
+        self.menuBar()
+        
+        # File menu
+        self.file_menu = self.menuBar().addMenu("File")
+        # Open scan option
+        self.open_option = self.file_menu.addAction("Open Scan")
+        self.open_option.triggered.connect(lambda: OpenScanDialog(self))
+        # Save scan option
+        self.save_option = self.file_menu.addAction("Save Scan")
+        self.save_option.triggered.connect(lambda: SaveScanDialog(self))
+
+        # Edit menu
+        self.edit_menu = self.menuBar().addMenu("Edit")
+        # Add/remove option
+        self.add_remove_option = self.edit_menu.addAction("Add/Remove segments")
+        self.add_remove_dialog = AddRemoveSegmentDialog(self)
+        self.add_remove_option.triggered.connect(self.add_remove_dialog.show) # lambda: AddRemoveSegmentDialog(self).open())
+        # Copy segment option
+        self.copy_option = self.edit_menu.addAction("Copy segment")
+        self.copy_dialog = CopySegmentDialog(self)
+        self.copy_option.triggered.connect(self.copy_dialog.show)
+        # Edit analog and digital labels
+        self.labels_option = self.edit_menu.addAction("Edit labels")
+        self.edit_labels_dialog = EditAnaDigLabelsDialog(self)
+        self.labels_option.triggered.connect(self.edit_labels_dialog.show) # lambda: EditAnaDigLabelsDialog(self).exec())
+        # Edit conversion constant
+        self.calculator_option = self.edit_menu.addAction("Calculator")
+        self.calculator_dialog = CalculatorDialog(self)
+        self.calculator_option.triggered.connect(self.calculator_dialog.show) # lambda: self.calculator_dialog.open())
+        # Data plot calibration
+        self.calibrate_plot_option = self.edit_menu.addAction("Calibrate plot")
+        self.calibrate_plot_dialog = PlotCalibrateDialog()
+        self.calibrate_plot_option.triggered.connect(self.calibrate_plot_dialog.show) # lambda: self.calibrate_plot_dialog.open())
+
+        # Settings menu
+        # Connections option
+        self.settings_menu = self.menuBar().addMenu("Settings")
+        self.connection_option = self.settings_menu.addAction("Connect")
+        # Create connection dialog box
+        self.connection_dialog = ConnectionDialog(self)
+        # Show dialog box when button is clicked
+        self.connection_option.triggered.connect(self.connection_dialog.exec)
+        # Reset connection option
+        self.reset_option = self.settings_menu.addAction("Reset Connection")
+        # Reset connection action
+        self.reset_option.triggered.connect(self.resetConnection)
 
         # Create splitter for left and right halves and make it the central widget
         self.main_splitter = QSplitter()
@@ -35,9 +86,7 @@ class MainWindow(QMainWindow):
         self.main_splitter.setSizes([1, 0])
 
         # Top left displays scan sections
-        # Each output is displayed on a different tab
         self.scan_area = QScrollArea()
-        # Create output 1 area for tab 1
         self.scan_area.setWidget(QWidget())
         self.scan_area.setWidgetResizable(True)
         self.scan_area.widget().setLayout(QHBoxLayout())
@@ -50,11 +99,23 @@ class MainWindow(QMainWindow):
         self.left_splitter.addWidget(self.scan_function.scan_plot)
         self.scan_function.scan_plot.hide()
 
-        # Bottom left displays plot of data
+        # Bottom left displays plot of data and plot options
+        self.data_plot_splitter = QSplitter()
+        self.data_plot_splitter.setOrientation(Qt.Horizontal)
+        self.left_splitter.addWidget(self.data_plot_splitter)
+        self.data_plot_splitter.hide()
         # Add plot to left half
         self.data_plot = DataPlot(self)
-        self.left_splitter.addWidget(self.data_plot)
-        self.data_plot.hide()
+        self.data_plot_splitter.addWidget(self.data_plot)
+        # Add options to right half
+        self.data_plot_options = QWidget()
+        self.data_plot_options_layout = QHBoxLayout()
+        self.data_plot_options.setLayout(self.data_plot_options_layout)
+        self.data_plot_splitter.addWidget(self.data_plot_options)
+        # Number of averages box
+        self.data_plot_options_layout.addWidget(QLabel("Averages"))
+        self.averages_box = QLineEdit("1")
+        self.data_plot_options_layout.addWidget(self.averages_box)
         # self.data_plot_thread = DataPlotThread()
         # self.left_splitter.addWidget(self.data_plot_thread.plot)
         # self.data_plot_thread.plot.hide()
@@ -121,58 +182,9 @@ class MainWindow(QMainWindow):
         self.stop_button.setEnabled(False)
 
         # Bottom right displays announcer
-        self.announcer = QPlainTextEdit()
         self.announcer.setReadOnly(True)
         # Add announcer to right half
         self.right_layout.addWidget(self.announcer)
-
-        # Create menu
-        self.menuBar()
-
-        # File menu
-        self.file_menu = self.menuBar().addMenu("File")
-        # Open scan option
-        self.open_option = self.file_menu.addAction("Open Scan")
-        self.open_option.triggered.connect(lambda: OpenScanDialog(self))
-        # Save scan option
-        self.save_option = self.file_menu.addAction("Save Scan")
-        self.save_option.triggered.connect(lambda: SaveScanDialog(self))
-
-        # Edit menu
-        self.edit_menu = self.menuBar().addMenu("Edit")
-        # Add/remove option
-        self.add_remove_option = self.edit_menu.addAction("Add/Remove segments")
-        self.add_remove_dialog = AddRemoveSegmentDialog(self)
-        self.add_remove_option.triggered.connect(self.add_remove_dialog.show) # lambda: AddRemoveSegmentDialog(self).open())
-        # Copy segment option
-        self.copy_option = self.edit_menu.addAction("Copy segment")
-        self.copy_dialog = CopySegmentDialog(self)
-        self.copy_option.triggered.connect(self.copy_dialog.show)
-        # Edit analog and digital labels
-        self.labels_option = self.edit_menu.addAction("Edit labels")
-        self.edit_labels_dialog = EditAnaDigLabelsDialog(self)
-        self.labels_option.triggered.connect(self.edit_labels_dialog.show) # lambda: EditAnaDigLabelsDialog(self).exec())
-        # Edit conversion constant
-        self.calculator_option = self.edit_menu.addAction("Calculator")
-        self.calculator_dialog = CalculatorDialog(self)
-        self.calculator_option.triggered.connect(self.calculator_dialog.show) # lambda: self.calculator_dialog.open())
-        # Data plot calibration
-        self.calibrate_plot_option = self.edit_menu.addAction("Calibrate plot")
-        self.calibrate_plot_dialog = PlotCalibrateDialog()
-        self.calibrate_plot_option.triggered.connect(self.calibrate_plot_dialog.show) # lambda: self.calibrate_plot_dialog.open())
-
-        # Settings menu
-        # Connections option
-        self.settings_menu = self.menuBar().addMenu("Settings")
-        self.connection_option = self.settings_menu.addAction("Connect")
-        # Create connection dialog box
-        self.connection_dialog = ConnectionDialog(self)
-        # Show dialog box when button is clicked
-        self.connection_option.triggered.connect(self.connection_dialog.exec)
-        # Reset connection option
-        self.reset_option = self.settings_menu.addAction("Reset Connection")
-        # Reset connection action
-        self.reset_option.triggered.connect(self.resetConnection)
 
     # def setConversionState(self, drive_constant, tickle_constant):
     #     try:
@@ -234,7 +246,7 @@ class MainWindow(QMainWindow):
             self.upload_button.setEnabled(False)
             self.run_button.setEnabled(False)
             self.stop_button.setEnabled(True)
-            self.data_plot.show()
+            self.data_plot_splitter.show()
         except:
             self.announcer.appendPlainText("No serial port found")
 

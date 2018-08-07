@@ -26,7 +26,15 @@ class DataPort(serial.Serial):
         # pyqtRemoveInputHook()
         # pdb.set_trace()
         self.data_thread = DataThread(self)
+        # Signal to data plot that averages has changed
+        self.main_window.averages_box.textChanged.connect(self.update)
         self.data_thread.start()
+        
+    def update(self, value):
+        try:
+            self.data_thread.num_data = int(value)
+        except:
+            self.data_thread.num_data = 1
         
     # def startDataThread(self):
         # self.data_lock.release()
@@ -48,11 +56,13 @@ class DataThread(QThread):
         # Connect signal
         self.update_signal.connect(self.data_port.main_window.data_plot.updatePlot)
         # Structure for holding data
-        self.num_data = 5
-        self.data_string = [b'' for n in range(self.num_data)]
+        self.num_data = 1
+        self.max_num_data = 100
+        self.data_string = [b'' for n in range(self.max_num_data)]
         self.data = [[] for n in range(self.num_data)]
         self.master_port_access = False
-        self.lock = Lock()
+        self.data_plot_trigger = True
+        # self.lock = Lock()
         
     def run(self):
         # n = 0
@@ -73,13 +83,18 @@ class DataThread(QThread):
                             # self.data_string[self.n] += self.data_port.read(self.data_port.in_waiting)
                     while self.data_port.in_waiting:
                         self.data_string[self.n] += self.data_port.read(self.data_port.in_waiting)
-                    self.update_signal.emit(self.data_string)
+                    self.n = (self.n + 1) % self.max_num_data
+                    print(" ")
+                    print(self.n)
+                    print(self.data_plot_trigger)
+                    if self.data_plot_trigger:
+                        data_string_slice = [self.data_string[i] for i in range(self.n - self.num_data, self.n)]
+                        self.update_signal.emit(data_string_slice)
                     # print("length of", self.n, ":", len(self.data_string[self.n]))
                     # print("not read:", self.data_port.in_waiting)
-                    self.n = (self.n + 1) % self.num_data
                     self.data_string[self.n] = b''
     
-    def readData(self):
+    # def readData(self):
         # self.data_port.reset_input_buffer()
         # with self.lock:
             # while self.trigger:
@@ -87,30 +102,37 @@ class DataThread(QThread):
             # print(len(self.data_string[self.n]))
         # print("length:", len(self.data_string[self.n]))
         # print("not read:", self.data_port.in_waiting)
-        self.n = (self.n + 1) % self.num_data
+        # self.n = (self.n + 1) % self.num_data
         
-    def processData(self):
-        with self.lock:
-            self.data[self.n] = [self.data_string[self.n][i * 2] + self.data_string[self.n][i * 2 + 1] * 256 for i in range(int(len(self.data_string[self.n]) / 2))]
-            next = (self.n + 1) % self.num_data
-            self.data_string[next] = b''
-            if clock() - self.time > 1:
-                self.update_signal.emit(self.data[self.n])
-                self.time = clock()
+    # def processData(self):
+        # with self.lock:
+            # self.data[self.n] = [self.data_string[self.n][i * 2] + self.data_string[self.n][i * 2 + 1] * 256 for i in range(int(len(self.data_string[self.n]) / 2))]
+            # next = (self.n + 1) % self.num_data
+            # self.data_string[next] = b''
+            # if clock() - self.time > 1:
+                # self.update_signal.emit(self.data[self.n])
+                # self.time = clock()
                     
 class DataPlot(pg.PlotWidget):
     def __init__(self, main_window):
         super(DataPlot, self).__init__()
+        self.main_window = main_window
         self.setLabel('bottom', text='Data point')
+        # self.main_window.calculator_dialog.findBoundary()
+        # self.constant = float(self.main_window.calculator_dialog.mass_box.text()) * float(self.main_window.calculator_dialog.frequency_box.text())**2
+        # print(self.constant)
         self.setLabel('left', text='Intensity')
+        self.setDownsampling(auto=True, mode='mean')
+        self.setClipToView(True)
 
     def updatePlot(self, data_string):
+        self.main_window.connection_dialog.slave_serial.data_thread.data_plot_trigger = False
         data = [[data_n[j * 2] + data_n[j * 2 + 1] * 256 for j in range(int(len(data_n) / 2))] for data_n in data_string if len(data_n) > 0]
         print(len(data))
-        plot_data = [sum(i) for i in zip(*data)]
-        print(len(plot_data))
+        plot_data = [sum(i) / len(data) for i in zip(*data)]
         # data = [data_string[j * 2] + data_string[j * 2 + 1] * 256 for j in range(int(len(data_string) / 2))]
         self.plot(range(len(plot_data)), plot_data, clear = True)
+        self.main_window.connection_dialog.slave_serial.data_thread.data_plot_trigger = True
 
 # class DataPlotThread(Thread):
     # def __init__(self):
