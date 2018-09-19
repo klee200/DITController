@@ -435,7 +435,7 @@ void Segment::setupSegment()
   Fast_digitalWrite(50A, digital[8]);
   Fast_digitalWrite(51A, digital[9]);
   Fast_digitalWrite(52A, digital[10]);
-//  Fast_digitalWrite(53A, digital[11]);
+  Fast_digitalWrite(53A, digital[11]);
 }
 
 void Segment::updateAnalogValue(uint8_t analog_output, double analog_volt)
@@ -724,6 +724,8 @@ void setup1() {
 //  pinMode(A0, INPUT);
 //  analogReadResolution(14);
 //  Fast_digitalWrite(42, 1);
+  pinMode(13, OUTPUT);
+  digitalWrite(13, LOW);
 }
 
 
@@ -758,11 +760,11 @@ void StartDataAcquisition()
 {
   uint32_t start_time = micros();
 //  SerialASC.write(1);
-  Fast_digitalWrite(53A, 1);
+  Fast_digitalWrite(13, 1);
   while(micros() - start_time < record_duration)
   {
   }
-  Fast_digitalWrite(53A, 0);
+  Fast_digitalWrite(13, 0);
   SerialASC.write(0);
 //  SerialASC.println('#');
 //  SerialASC.println(data_length_points);

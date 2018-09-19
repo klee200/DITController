@@ -1,268 +1,128 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
-from Communication import SerialPort
-from DataPlot import DataPort
 from ScanFunction import *
-import pdb
-import numpy as np
+from SerialPorts import *
 
+class ConnectionWindow(QDialog):
+    def __init__(self, textWidget):
+        super(ConnectionWindow, self).__init__()
+        self.setWindowFlags(Qt.WindowStaysOnTopHint)
+        self.textWidget = textWidget
+        
+        self.controlPort = ControlPort()
+        self.dataPort = DataPort(self.controlPort)
+        
+        self.build_window()
 
-class OpenScanDialog(QFileDialog):
-    def __init__(self, main_window):
-        super(OpenScanDialog, self).__init__()
-        try:
-            # Check with user if needs to save current scan
-            SaveCheckDialog(main_window).exec()
-            # # Make sure mode is set to frequency
-            # if main_window.mass_button.isChecked() == True:
-            #     main_window.frequency_button.setChecked(True)
-            # Get file name from text box
-            self.file_name = self.getOpenFileName(filter='Scan Files (*.scan);;Text Files (*.txt);;All Files (*.*)')[0]
-            # Open file for reading
-            self.file = open(self.file_name, 'r')
-            # Read data from file
-            self.scan_funciton_data = self.file.read()
-            # Generate scan function from read data
-            main_window.scan_function.convertFromJson(self.scan_funciton_data)
-        except:
-            pass
-
-
-class SaveScanDialog(QFileDialog):
-    def __init__(self, main_window):
-        super(SaveScanDialog, self).__init__()
-        try:
-            # # Make sure mode is set to frequency
-            # if main_window.mass_button.isChecked() == True:
-            #     main_window.frequency_button.setChecked(True)
-            # Get file name from text box
-            self.file_name = self.getSaveFileName(filter='Scan Files (*.scan);;Text Files (*.txt)')[0]
-            # Create file for writing
-            self.file = open(self.file_name, 'w')
-            # Write json to file
-            self.file.write(main_window.scan_function.convertToJson())
-            self.file.close()
-
-            # Grab scan area picture
-            self.scan_pic = main_window.scan_area.widget().grab()
-            # Use same file name but replace file extensions with picture extension
-            self.scan_pic_file_name = self.file_name.replace('.scan', '.jpg')
-            # Save picture file
-            self.scan_pic.save(self.scan_pic_file_name, 'jpg')
-
-        except:
-            pass
-
-
-class SaveCheckDialog(QDialog):
-    def __init__(self, main_window):
-        super(SaveCheckDialog, self).__init__()
+    def build_window(self):
         self.setLayout(QGridLayout())
-        self.layout().addWidget(QLabel("Do you want to save the current scan?"), 0, 0, 1, 2)
-        self.save_button = QPushButton("Save")
-        self.no_save_button = QPushButton("Don't Save")
-        self.layout().addWidget(self.save_button, 1, 0)
-        self.layout().addWidget(self.no_save_button, 1, 1)
-        # Button functions
-        self.save_button.clicked.connect(lambda: self.saveFirst(main_window))
-        self.no_save_button.clicked.connect(self.close)
-
-    def saveFirst(self, main_window):
-        main_window.save_option.trigger()
-        self.close()
-
-
-class ConnectionDialog(QDialog):
-    def __init__(self, main_window):
-        super(ConnectionDialog, self).__init__()
-        # Create layout for dialog box
-        self.main_layout = QGridLayout()
-        self.setLayout(self.main_layout)
-        # Create labels
-        self.master_label = QLabel('Master: ')
-        self.main_layout.addWidget(self.master_label, 0, 0)
-        self.slave_label = QLabel('Slave: ')
-        self.main_layout.addWidget(self.slave_label, 3, 0)
-        # Create boxes
-        self.master_box = QLineEdit("COM7")
-        self.main_layout.addWidget(self.master_box, 0, 1)
-        self.slave_box = QLineEdit("COM6")
-        self.main_layout.addWidget(self.slave_box, 3, 1)
-        # Create buttons
-        self.master_connect_button = QPushButton('Connect Master')
-        self.main_layout.addWidget(self.master_connect_button, 1, 0)
-        self.master_disconnect_button = QPushButton('Disconnect Master')
-        self.main_layout.addWidget(self.master_disconnect_button, 1, 1)
-        self.slave_connect_button = QPushButton('Connect Slave')
-        self.main_layout.addWidget(self.slave_connect_button, 4, 0)
-        self.slave_disconnect_button = QPushButton('Disconnect Slave')
-        self.main_layout.addWidget(self.slave_disconnect_button, 4, 1)
-        # Button functions
-        self.master_connect_button.clicked.connect(lambda: self.connectMaster(self.master_box.text()))
-        self.master_disconnect_button.clicked.connect(self.disconnectMaster)
-        self.slave_connect_button.clicked.connect(lambda: self.connectSlave(self.slave_box.text()))
-        self.slave_disconnect_button.clicked.connect(self.disconnectSlave)
-        # Create line
+        
+        self.layout().addWidget(QLabel("Control"), 0, 0)
+        self.controlBox = QLineEdit("COM7")
+        self.layout().addWidget(self.controlBox, 0, 1)
+        
         self.line = QFrame()
         self.line.setFrameShape(QFrame.HLine)
-        self.main_layout.addWidget(self.line, 2, 0, 1, 2)
+        self.layout().addWidget(self.line, 2, 0, 1, 2)
+        
+        self.layout().addWidget(QLabel("Data"), 3, 0)
+        self.dataBox = QLineEdit("COM6")
+        self.layout().addWidget(self.dataBox, 3, 1)
+        
+        self.controlConnectBtn = QPushButton('Connect Controller')
+        self.layout().addWidget(self.controlConnectBtn, 1, 0)
+        self.controlDisconnectBtn = QPushButton('Disconnect Controller')
+        self.layout().addWidget(self.controlDisconnectBtn, 1, 1)
+        self.dataConnectBtn = QPushButton('Connect Data')
+        self.layout().addWidget(self.dataConnectBtn, 4, 0)
+        self.dataDisconnectBtn = QPushButton('Disconnect Data')
+        self.layout().addWidget(self.dataDisconnectBtn, 4, 1)
 
-        # Allow external dialog to access announcer in Main Window
-        self.main_window = main_window
-        self.announcer = main_window.announcer
-
-    def connectMaster(self, port_choice):
+    def connect_control(self):
         try:
-            self.master_serial = SerialPort(port_choice, self.main_window)
-            self.announcer.appendPlainText("Master serial connected")
-        except:
-            self.announcer.appendPlainText("No serial port found")
+            # self.controlPort = ControlPort(self.controlBox.text())
+            self.controlPort.port = self.controlBox.text()
+            self.controlPort.open()
+            self.textWidget.appendPlainText("Controller connected")
+        except SerialException:
+            self.textWidget.appendPlainText("No serial port found")
 
-    def disconnectMaster(self):
+    def disconnect_control(self):
         try:
-            self.master_serial.close()
-            self.master_serial = None
-            self.announcer.appendPlainText("Master serial disconnected")
-        except:
-            self.announcer.appendPlainText("No connection found")
-            
-    def connectSlave(self, port_choice):
+            self.controlPort.close()
+            # del(self.controlPort)
+            self.textWidget.appendPlainText("Controller disconnected")
+        except SerialException:
+            self.textWidget.appendPlainText("No connection found")
+        
+    def connect_data(self):
         try:
-            self.slave_serial = DataPort(port_choice, self.main_window)
-            self.announcer.appendPlainText("Data serial connected")
-        except:
-            self.announcer.appendPlainText("No serial port found")
-            
-    def disconnectSlave(self):
+            # self.dataPort = DataPort(self.dataBox.text(), self.controlPort)
+            self.dataPort.port = self.dataBox.text()
+            self.dataPort.open()
+            self.dataPort.dataThread.start()
+            # self.mainWindow.averages_box.textChanged.connect(self.dataPort.update)
+            # self.dataPort.dataThread.updateSignal.connect(self.mainWindow.dataPlot.updatePlot)
+            self.textWidget.appendPlainText("Data serial connected")
+        except SerialException:
+            self.textWidget.appendPlainText("No serial port found")
+        
+    def disconnect_data(self):
         try:
-            self.slave_serial.close()
-            del(self.slave_serial)
-            # self.slave_serial = None
-            self.announcer.appendPlainText("Data serial disconnected")
-        except:
-            self.announcer.appendPlainText("No connection found")
+            self.dataPort.close()
+            # del(self.dataPort)
+            self.textWidget.appendPlainText("Data serial disconnected")
+        except SerialException:
+            self.textWidget.appendPlainText("No connection found")
 
 
-class AddRemoveSegmentDialog(QDialog):
-    def __init__(self, main_window):
-        super(AddRemoveSegmentDialog, self).__init__()
+class AddRemoveSegmentWindow(QDialog):
+    def __init__(self):
+        super(AddRemoveSegmentWindow, self).__init__()
         self.setWindowFlags(Qt.WindowStaysOnTopHint)
-        # Create layout
+        self.build_window()
+        
+    def build_window(self):
         self.setLayout(QGridLayout())
-        # Create labels and boxes
+        
         self.layout().addWidget(QLabel("Insert new segment at position:"), 1, 0)
-        self.add_position_box = QLineEdit()
-        self.layout().addWidget(self.add_position_box, 1, 1)
+        self.addPositionBox = QLineEdit("1")
+        self.layout().addWidget(self.addPositionBox, 1, 1)
         self.layout().addWidget(QLabel("Remove segment from position:"), 3, 0)
-        self.remove_position_box = QLineEdit()
-        self.layout().addWidget(self.remove_position_box, 3, 1)
-        # Create buttons
-        self.insert_seg_button = QPushButton("Insert segment")
-        self.layout().addWidget(self.insert_seg_button, 2, 0, 1, 2)
-        self.remove_seg_button = QPushButton("Remove segment")
-        self.layout().addWidget(self.remove_seg_button, 4, 0, 1, 2)
-        self.close_button = QPushButton("Close")
-        self.layout().addWidget(self.close_button, 5, 0, 1, 2)
-        # Button functions
-        self.insert_seg_button.clicked.connect(lambda: self.insertScanSegment(main_window))
-        self.remove_seg_button.clicked.connect(lambda: self.removeScanSegment(main_window))
-        self.close_button.clicked.connect(self.close)
-
-    def insertScanSegment(self, main_window):
-        # Calculate position to insert at
-        try:
-            self.position = int(self.add_position_box.text()) - 1
-        except:
-            self.position = len(main_window.scan_function.scan_list)
-
-        main_window.scan_function.addSegment(self.position)
-
-    def removeScanSegment(self, main_window):
-        # Calculate position to remove from
-        try:
-            self.position = int(self.remove_position_box.text()) - 1
-        except:
-            self.position = len(main_window.scan_function.scan_list) - 1
-
-        main_window.scan_function.removeSegment(self.position)
+        self.removePositionBox = QLineEdit("1")
+        self.layout().addWidget(self.removePositionBox, 3, 1)
+        
+        self.addSegBtn = QPushButton("Insert segment")
+        self.layout().addWidget(self.addSegBtn, 2, 0, 1, 2)
+        self.removeSegBtn = QPushButton("Remove segment")
+        self.layout().addWidget(self.removeSegBtn, 4, 0, 1, 2)
 
 
-class CopySegmentDialog(QDialog):
-    def __init__(self, main_window):
-        super(CopySegmentDialog, self).__init__()
-        # Set layout
-        self.setLayout(QGridLayout())
-        # Add labels and boxes
-        self.layout().addWidget(QLabel("Copy segment:"), 0, 0)
-        self.copy_box = QLineEdit()
-        self.layout().addWidget(self.copy_box, 0, 1)
-        self.layout().addWidget(QLabel("to:"), 1, 0)
-        self.paste_box = QLineEdit()
-        self.layout().addWidget(self.paste_box, 1, 1)
-        # Add buttons
-        self.copy_button = QPushButton("Do it")
-        self.layout().addWidget(self.copy_button)
-        self.copy_button.clicked.connect(
-            lambda: self.copyAndPaste(main_window, int(self.copy_box.text()) - 1, int(self.paste_box.text()) - 1))
-
-    def copyAndPaste(self, main_window, copy_position, paste_position):
-        # Create new segment at paste position
-        new_segment = main_window.scan_function.addSegment(paste_position)
-        # Copy parameters from copy position
-        new_segment.convertFromDictionary(main_window.scan_function.scan_list[copy_position].convertToDictionary())
-
-
-class EditAnaDigLabelsDialog(QDialog):
-    def __init__(self, main_window):
-        super(EditAnaDigLabelsDialog, self).__init__()
-        # List that holds labels
-        self.analog_labels = []
-        self.digital_labels = []
-        # Make layout
-        self.setLayout(QGridLayout())
-        # Create two tables
-        self.analog_table = QTableWidget(ANALOG_ROWS, 1)
-        self.analog_table.horizontalHeader().hide()
-        self.analog_table.horizontalHeader().setDefaultSectionSize(WIDTH)
-        self.analog_table.setFixedWidth(WIDTH + 2)
-        self.analog_table.verticalHeader().hide()
-        self.analog_table.verticalHeader().setDefaultSectionSize(HEIGHT)
-        self.layout().addWidget(self.analog_table, 0, 0)
-        self.digital_table = QTableWidget(DIGITAL_ROWS, 1)
-        self.digital_table.horizontalHeader().hide()
-        self.digital_table.horizontalHeader().setDefaultSectionSize(WIDTH)
-        self.digital_table.setFixedWidth(WIDTH + 2)
-        self.digital_table.verticalHeader().hide()
-        self.digital_table.verticalHeader().setDefaultSectionSize(HEIGHT)
-        self.layout().addWidget(self.digital_table, 0, 1)
-        # Create buttons
-        self.ok_button = QPushButton("Ok")
-        self.layout().addWidget(self.ok_button, 1, 0)
-        self.cancel_button = QPushButton("Cancel")
-        self.layout().addWidget(self.cancel_button, 1, 1)
-        # Button functions
-        self.ok_button.clicked.connect(lambda: self.updateAnaDigLabels(main_window))
-        self.cancel_button.clicked.connect(self.close)
-        # Pull names from scan function labels
-        for row in range(ANALOG_ROWS):
-            self.analog_table.setItem(row, 0, QTableWidgetItem(main_window.scan_function.analog_labels[row]))
-        for row in range(DIGITAL_ROWS):
-            self.digital_table.setItem(row, 0, QTableWidgetItem(main_window.scan_function.digital_labels[row]))
-
-    def updateAnaDigLabels(self, main_window):
-        for row in range(ANALOG_ROWS):
-            self.analog_labels.append(self.analog_table.item(row, 0).text())
-        for row in range(DIGITAL_ROWS):
-            self.digital_labels.append(self.digital_table.item(row, 0).text())
-        main_window.scan_function.updateLabels(self.analog_labels, self.digital_labels)
-        self.close()
-
-
-class CalculatorDialog(QDialog):
-    def __init__(self, main_window):
-        super(CalculatorDialog, self).__init__()
+class CopySegmentWindow(QDialog):
+    def __init__(self, mainWindow):
+        super(CopySegmentWindow, self).__init__()
         self.setWindowFlags(Qt.WindowStaysOnTopHint)
-        self.main_window = main_window
+        self.mainWindow = mainWindow
+        self.build_window()
+        
+    def build_window(self):
+        self.setLayout(QGridLayout())
+        
+        self.layout().addWidget(QLabel("Copy segment:"), 0, 0)
+        self.copyBox = QLineEdit()
+        self.layout().addWidget(self.copyBox, 0, 1)
+        self.layout().addWidget(QLabel("to:"), 1, 0)
+        self.pasteBox = QLineEdit()
+        self.layout().addWidget(self.pasteBox, 1, 1)
+        
+        self.copyBtn = QPushButton("Do it")
+        self.layout().addWidget(self.copyBtn)
+
+class CalculatorWindow(QDialog):
+    def __init__(self, mainWindow):
+        super(CalculatorWindow, self).__init__()
+        self.setWindowFlags(Qt.WindowStaysOnTopHint)
+        self.mainWindow = mainWindow
         # Make layout
         self.setLayout(QGridLayout())
         # Constants
@@ -289,7 +149,7 @@ class CalculatorDialog(QDialog):
         # self.a_z_box.setEnabled(False)  # Make a not editable
         # self.layout().addWidget(self.a_z_box, 0, 5)
         # self.layout().addWidget(QLabel("q"), 1, 4)
-        # self.q_z_box = QLineEdit(self.main_window.default_q_z)
+        # self.q_z_box = QLineEdit(self.mainWindow.default_q_z)
         # self.layout().addWidget(self.q_z_box, 1, 5)
         self.layout().addWidget(QLabel("Beta r"), 4, 0)
         self.beta_r_box = QLineEdit()
@@ -544,21 +404,21 @@ class CalculatorDialog(QDialog):
                 self.frequency_box.setText(str(float(self.frequency_box.text()) - pow(10, i)))
 
     # def copyConstants(self):
-    #     self.main_window.conv_const_box.setText(self.drive_const_box.text())
-    #     self.main_window.tickle_const_box.setText(self.tickle_const_box.text())
+    #     self.mainWindow.conv_const_box.setText(self.drive_const_box.text())
+    #     self.mainWindow.tickle_const_box.setText(self.tickle_const_box.text())
     #     self.close()
 
     # def saveDefaults(self):
-    #     self.main_window.default_r = self.r_box.text()
-    #     self.main_window.default_z = self.z_box.text()
-    #     self.main_window.default_high_v = self.high_v_box.text()
-    #     self.main_window.default_low_v = self.low_v_box.text()
-    #     self.main_window.default_duty_cycle = self.d_box.text()
-    #     self.main_window.default_q_z = self.q_z_box.text()
+    #     self.mainWindow.default_r = self.r_box.text()
+    #     self.mainWindow.default_z = self.z_box.text()
+    #     self.mainWindow.default_high_v = self.high_v_box.text()
+    #     self.mainWindow.default_low_v = self.low_v_box.text()
+    #     self.mainWindow.default_duty_cycle = self.d_box.text()
+    #     self.mainWindow.default_q_z = self.q_z_box.text()
 
-class PlotCalibrateDialog(QDialog):
-    def __init__(self):
-        super(PlotCalibrateDialog, self).__init__()
+class PlotCalibrateWindow(QDialog):
+    def __init__(self, mainWindow):
+        super(PlotCalibrateWindow, self).__init__()
         self.setWindowFlags(Qt.WindowStaysOnTopHint)
         # Make layout
         self.setLayout(QHBoxLayout())

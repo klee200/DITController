@@ -1,130 +1,66 @@
-from DataPlot import *
-from DialogWindows import *
-from time import *
 import pdb
+import sys
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
+from DialogWindows import *
+from DataWindow import *
+from ScanFunction import *
+from serial import *
+from time import *
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
-        # Call parent constructor
         super(MainWindow, self).__init__()
         
-        # Create scan function object
-        self.scan_function = ScanFunction(self)
+        self.textWidget = TextWidget()
+        self.scanWidget = ScanWidget(self.textWidget)
+        self.btnWidget = BtnWidget()
         
-        # Create announcer - added to console window below
-        self.announcer = QPlainTextEdit()
-
-        # Create menu
+        self.connectWindow = ConnectionWindow(self.textWidget)
+        self.addRemoveWindow = AddRemoveSegmentWindow()
+        self.copyWindow = CopySegmentWindow(self)
+        self.calcWindow = CalculatorWindow(self)
+        self.calibrateWindow = PlotCalibrateWindow(self)
+        
+        self.dataWindow = DataWindow(self.connectWindow.dataPort.dataThread.dataPlotTrigger)
+        
+        self.build_menu()
+        self.build_window()
+        
+        self.show()
+        
+    def build_menu(self):
         self.menuBar()
         
-        # File menu
-        self.file_menu = self.menuBar().addMenu("File")
-        # Open scan option
-        self.open_option = self.file_menu.addAction("Open Scan")
-        self.open_option.triggered.connect(lambda: OpenScanDialog(self))
-        # Save scan option
-        self.save_option = self.file_menu.addAction("Save Scan")
-        self.save_option.triggered.connect(lambda: SaveScanDialog(self))
+        self.fileMenu = self.menuBar().addMenu("File")
+        self.openAction = self.fileMenu.addAction("Open Scan")
+        self.saveAction = self.fileMenu.addAction("Save Scan")
+        
+        self.editMenu = self.menuBar().addMenu("Edit")
+        self.addRemoveAction = self.editMenu.addAction("Add/Remove segments")
+        self.copyAction = self.editMenu.addAction("Copy segment")
+        self.calcAction = self.editMenu.addAction("Calculator")
+        self.calibrateAction = self.editMenu.addAction("Calibrate plot")
+        
+        self.settingsMenu = self.menuBar().addMenu("Settings")
+        self.connectAction = self.settingsMenu.addAction("Connect")
 
-        # Edit menu
-        self.edit_menu = self.menuBar().addMenu("Edit")
-        # Add/remove option
-        self.add_remove_option = self.edit_menu.addAction("Add/Remove segments")
-        self.add_remove_dialog = AddRemoveSegmentDialog(self)
-        self.add_remove_option.triggered.connect(self.add_remove_dialog.show) # lambda: AddRemoveSegmentDialog(self).open())
-        # Copy segment option
-        self.copy_option = self.edit_menu.addAction("Copy segment")
-        self.copy_dialog = CopySegmentDialog(self)
-        self.copy_option.triggered.connect(self.copy_dialog.show)
-        # Edit analog and digital labels
-        self.labels_option = self.edit_menu.addAction("Edit labels")
-        self.edit_labels_dialog = EditAnaDigLabelsDialog(self)
-        self.labels_option.triggered.connect(self.edit_labels_dialog.show) # lambda: EditAnaDigLabelsDialog(self).exec())
-        # Edit conversion constant
-        self.calculator_option = self.edit_menu.addAction("Calculator")
-        self.calculator_dialog = CalculatorDialog(self)
-        self.calculator_option.triggered.connect(self.calculator_dialog.show) # lambda: self.calculator_dialog.open())
-        # Data plot calibration
-        self.calibrate_plot_option = self.edit_menu.addAction("Calibrate plot")
-        self.calibrate_plot_dialog = PlotCalibrateDialog()
-        self.calibrate_plot_option.triggered.connect(self.calibrate_plot_dialog.show) # lambda: self.calibrate_plot_dialog.open())
-
-        # Settings menu
-        # Connections option
-        self.settings_menu = self.menuBar().addMenu("Settings")
-        self.connection_option = self.settings_menu.addAction("Connect")
-        # Create connection dialog box
-        self.connection_dialog = ConnectionDialog(self)
-        # Show dialog box when button is clicked
-        self.connection_option.triggered.connect(self.connection_dialog.exec)
-        # Reset connection option
-        self.reset_option = self.settings_menu.addAction("Reset Connection")
-        # Reset connection action
-        self.reset_option.triggered.connect(self.resetConnection)
-
-        # Create splitter for left and right halves and make it the central widget
-        self.main_splitter = QSplitter()
-        self.main_splitter.setContentsMargins(10,10,10,10)
-        self.setCentralWidget(self.main_splitter)
-
-        # Left half of main layout has two vertically stacked sections
-        self.left_splitter = QSplitter()
-        self.left_splitter.setOrientation(Qt.Vertical)
-        # Add left half to main splitter
-        self.main_splitter.addWidget(self.left_splitter)
-
-        # Right half of main layout has two vertically stacked sections
-        self.right_layout = QVBoxLayout()
-        self.right_layout.setContentsMargins(0,0,0,0)
-        self.right_half = QWidget()
-        self.right_half.setLayout(self.right_layout)
-        # Add right half to main splitter
-        self.main_splitter.addWidget(self.right_half)
-
-        # Make left half as large as possible
-        self.main_splitter.setSizes([1, 0])
-
-        # Top left displays scan sections
-        self.scan_area = QScrollArea()
-        self.scan_area.setWidget(QWidget())
-        self.scan_area.setWidgetResizable(True)
-        self.scan_area.widget().setLayout(QHBoxLayout())
-        self.scan_area.widget().layout().setAlignment(Qt.AlignLeft)
-        # Add scan area to left splitter
-        self.left_splitter.addWidget(self.scan_area)
-
-        # Middle left displays plot of scan sections
-        # Add plot to left half and hides it
-        self.left_splitter.addWidget(self.scan_function.scan_plot)
-        self.scan_function.scan_plot.hide()
-
-        # Bottom left displays plot of data and plot options
-        self.data_plot_splitter = QSplitter()
-        self.data_plot_splitter.setOrientation(Qt.Horizontal)
-        self.left_splitter.addWidget(self.data_plot_splitter)
-        self.data_plot_splitter.hide()
-        # Add plot to left half
-        self.data_plot = DataPlot(self)
-        self.data_plot_splitter.addWidget(self.data_plot)
-        # Add options to right half
-        self.data_plot_options = QWidget()
-        self.data_plot_options_layout = QHBoxLayout()
-        self.data_plot_options.setLayout(self.data_plot_options_layout)
-        self.data_plot_splitter.addWidget(self.data_plot_options)
-        # Number of averages box
-        self.data_plot_options_layout.addWidget(QLabel("Averages"))
-        self.averages_box = QLineEdit("1")
-        self.data_plot_options_layout.addWidget(self.averages_box)
-        # self.data_plot_thread = DataPlotThread()
-        # self.left_splitter.addWidget(self.data_plot_thread.plot)
-        # self.data_plot_thread.plot.hide()
-        # self.data_plot_thread.start()
+    def build_window(self):
+        self.setCentralWidget(QWidget())
+        self.centralWidget().setLayout(QGridLayout())
+        
+        self.centralWidget().layout().setColumnStretch(0, 1)
+        self.centralWidget().layout().setColumnStretch(1, 0)
+        
+        self.centralWidget().layout().addWidget(self.scanWidget, 0, 0, 2, 1)
+        self.centralWidget().layout().addWidget(self.btnWidget, 0, 1)
+        self.centralWidget().layout().addWidget(self.textWidget, 1, 1)
 
         # # Top right displays frequency and m/z options
         # self.conversion_layout = QGridLayout()
         # # Add layout to right half
-        # self.right_layout.addLayout(self.conversion_layout)
+        # self.rightLayout.addLayout(self.conversion_layout)
         # # Create buttons at locations (row, column) in grid
         # # Select frequency or m/z display
         # self.frequency_button = QRadioButton("Frequency")
@@ -150,41 +86,30 @@ class MainWindow(QMainWindow):
         # self.frequency_button.toggled.connect(lambda: self.convertNumbers(self.conv_const_box.text(), self.tickle_const_box.text()))
 
         # Middle right displays buttons in grid layout
-        self.button_layout = QGridLayout()
+        # self.buttonLayout = QGridLayout()
         # Add button layout to right half
-        self.right_layout.addLayout(self.button_layout)
-        # Create buttons at locations (row, column) in grid
-        # # Add scan segment button
-        # self.add_remove_button = QPushButton("Add/Remove Segments")
-        # self.button_layout.addWidget(self.add_remove_button, 3, 0, 1, 2)
-        # # Add/remove scan segment button function
-        # self.add_remove_button.clicked.connect(lambda: AddRemoveSegmentDialog(self).open())
+        # self.rightLayout.addLayout(self.buttonLayout)
         # Download button
-        self.download_button = QPushButton("Download Scan")
-        self.button_layout.addWidget(self.download_button, 4, 0)
+        # self.downloadBtn = QPushButton("Download Scan")
+        # self.buttonLayout.addWidget(self.downloadBtn, 4, 0)
         # Download button function
-        self.download_button.clicked.connect(self.downloadScanFunction)
+        # self.downloadBtn.clicked.connect(self.download_scan)
         # Upload button
-        self.upload_button = QPushButton("Upload Scan")
-        self.button_layout.addWidget(self.upload_button, 4, 1)
+        # self.uploadBtn = QPushButton("Upload Scan")
+        # self.buttonLayout.addWidget(self.uploadBtn, 4, 1)
         # Upload button function
-        self.upload_button.clicked.connect(self.uploadScanFunction)
+        # self.uploadBtn.clicked.connect(self.upload_scan)
         # Run button
-        self.run_button = QPushButton("Run Scan")
-        self.button_layout.addWidget(self.run_button, 5, 0)
+        # self.runBtn = QPushButton("Run Scan")
+        # self.buttonLayout.addWidget(self.runBtn, 5, 0)
         # Run button function
-        self.run_button.clicked.connect(self.runScanFunction)
+        # self.runBtn.clicked.connect(self.run_scan)
         # Stop button
-        self.stop_button = QPushButton("Stop Scan")
-        self.button_layout.addWidget(self.stop_button, 5, 1)
+        # self.stopBtn = QPushButton("Stop Scan")
+        # self.buttonLayout.addWidget(self.stopBtn, 5, 1)
         # Stop button function
-        self.stop_button.clicked.connect(self.stopScanFunction)
-        self.stop_button.setEnabled(False)
-
-        # Bottom right displays announcer
-        self.announcer.setReadOnly(True)
-        # Add announcer to right half
-        self.right_layout.addWidget(self.announcer)
+        # self.stopBtn.clicked.connect(self.stop_scan)
+        # self.stopBtn.setEnabled(False)
 
     # def setConversionState(self, drive_constant, tickle_constant):
     #     try:
@@ -202,83 +127,91 @@ class MainWindow(QMainWindow):
     #
     # def convertNumbers(self, conversion_constant, tickle_constant):
     #     if self.frequency_button.isChecked() == True:
-    #         self.scan_function.convertToFrequency(conversion_constant, tickle_constant)
+    #         self.scanFunction.convertToFrequency(conversion_constant, tickle_constant)
     #     elif self.mass_button.isChecked() == True:
-    #         self.scan_function.convertToMass(conversion_constant, tickle_constant)
+    #         self.scanFunction.convertToMass(conversion_constant, tickle_constant)
+    
+    def closeEvent(self, event):
+        event.ignore()
+        choice = self.scanWidget.save_check()
+        if choice == QMessageBox.Cancel:
+            pass
+        else:
+            if choice == QMessageBox.Yes:
+                self.scanWidget.save_scan()
+            sys.exit()
+    
 
-    def downloadScanFunction(self):
-        scan_function_data_json = json.dumps(self.scan_function.convertToDictionary()['Data'])
+    
+    def download_scan(self):
         try:
-            # Send json string to Arduino
-            self.connection_dialog.master_serial.serialWrite('D')
-            self.connection_dialog.master_serial.serialWrite(scan_function_data_json)
-            read_input_list = self.connection_dialog.master_serial.serialRead('Download finished')
-            for read_input in read_input_list:
-                self.announcer.appendPlainText(read_input)
-        except:
-            # If serial write fails, signal error
-            self.announcer.appendPlainText("No serial port found")
+            scanData = json.dumps(self.scanWidget.scanFunction)
+            self.connectWindow.controlPort.serial_write('D')
+            self.connectWindow.controlPort.serial_write(scanData)
+            readInputList = self.connectWindow.controlPort.serial_read('Download finished')
+            for readInput in readInputList:
+                self.textWidget.appendPlainText(readInput)
+        except SerialException:
+            self.textChanged.appendPlainText("No serial port found")
 
-    def uploadScanFunction(self):
+    def upload_scan(self):
         try:
-            self.connection_dialog.master_serial.serialWrite('U')
-            read_input_list = self.connection_dialog.master_serial.serialRead('Upload finished')
-            for read_input in read_input_list:
-                self.announcer.appendPlainText(read_input)
-        except:
-            self.announcer.appendPlainText("No serial port found")
+            self.connectWindow.controlPort.serial_write('U')
+            readInputList = self.connectWindow.controlPort.serial_read('Upload finished')
+            for readInput in readInputList:
+                self.textWidget.appendPlainText(readInput)
+        except SerialException:
+            self.textWidget.appendPlainText("No serial port found")
 
-    def runScanFunction(self):
+    def run_scan(self):
+        self.connectWindow.dataPort.dataThread.controlPortAccess = True
         try:
-            self.connection_dialog.slave_serial.data_thread.master_port_access = True
-        except:
-            None
-        try:
-            self.connection_dialog.master_serial.serialWrite('R')
-            # read_input_list = self.connection_dialog.master_serial.serialRead('Running scan function')
-            # for read_input in read_input_list:
-                # self.announcer.appendPlainText(read_input)
-            # self.connection_dialog.master_serial.read_active = False
-            # self.connection_dialog.master_serial.data_active = True
-            # if read_input == "Running scan function":
-            # self.connection_dialog.slave_serial.startDataThread()
-            self.download_button.setEnabled(False)
-            self.upload_button.setEnabled(False)
-            self.run_button.setEnabled(False)
-            self.stop_button.setEnabled(True)
-            self.data_plot_splitter.show()
-        except:
-            self.announcer.appendPlainText("No serial port found")
+            self.connectWindow.controlPort.serial_write('R')
+            self.btnWidget.downloadBtn.setEnabled(False)
+            self.btnWidget.uploadBtn.setEnabled(False)
+            self.btnWidget.runBtn.setEnabled(False)
+            self.btnWidget.stopBtn.setEnabled(True)
+        except SerialException:
+            self.textWidget.appendPlainText("No serial port found")
 
-    def stopScanFunction(self):
-        try:
-            self.connection_dialog.slave_serial.data_thread.master_port_access = False
-        except:
-            None
+    def stop_scan(self):
+        self.connectWindow.dataPort.dataThread.controlPortAccess = False
         try:
             sleep(1)
-            self.connection_dialog.master_serial.serialWrite('S')
-            self.connection_dialog.master_serial.reset_input_buffer()
-            # self.announcer.appendPlainText(read_input)
-            # self.connection_dialog.master_serial.data_active = False
-            # self.connection_dialog.master_serial.read_active = True
-            # if read_input == "Stopping scan function":
-            # self.connection_dialog.slave_serial.endDataThread()
-            # read_input_list = self.connection_dialog.master_serial.serialRead('Stopping scan function')
-            self.download_button.setEnabled(True)
-            self.upload_button.setEnabled(True)
-            self.run_button.setEnabled(True)
-            self.stop_button.setEnabled(False)
-        except:
+            self.connectWindow.controlPort.serial_write('S')
+            self.connectWindow.controlPort.reset_input_buffer()
+            self.btnWidget.downloadBtn.setEnabled(True)
+            self.btnWidget.uploadBtn.setEnabled(True)
+            self.btnWidget.runBtn.setEnabled(True)
+            self.btnWidget.stopBtn.setEnabled(False)
+        except SerialException:
             self.announcer.appendPlainText("No serial port found")
 
-    def resetConnection(self):
-        try:
-            self.connection_dialog.disconnectMaster()
-            self.connection_dialog.connectMaster(self.connection_dialog.master_box.text())
-            self.download_button.setEnabled(True)
-            self.upload_button.setEnabled(True)
-            self.run_button.setEnabled(True)
-            self.stop_button.setEnabled(False)
-        except:
-            self.announcer.appendPlainText("No connection found")
+
+        
+class BtnWidget(QWidget):
+    def __init__(self):
+        super(BtnWidget, self).__init__()
+        
+        self.downloadBtn = QPushButton("Download Scan")
+        self.uploadBtn = QPushButton("Upload Scan")
+        self.runBtn = QPushButton("Run Scan")
+        self.stopBtn = QPushButton("Stop Scan")
+        
+        self.build_widget()
+        
+    def build_widget(self):
+        self.setLayout(QGridLayout())
+        
+        self.layout().addWidget(self.downloadBtn, 0, 0)
+        self.layout().addWidget(self.uploadBtn, 0, 1)
+        self.layout().addWidget(self.runBtn, 1, 0)
+        self.layout().addWidget(self.stopBtn, 1, 1)
+        self.stopBtn.setEnabled(False)
+        
+class TextWidget(QPlainTextEdit):
+    def __init__(self):
+        super(TextWidget, self).__init__()
+        
+        self.setReadOnly(True)
+        

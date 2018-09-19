@@ -42,11 +42,11 @@ void setup(){
   ADC->ADC_PTCR=1;
   ADC->ADC_CR=2;
 
-  pinMode(51, INPUT);
+  pinMode(13, INPUT);
 }
 
 void loop(){
-  while((PIOC->PIO_PDSR & 1<<12) != 1<<12){
+  while((PIOB->PIO_PDSR & 1<<27) != 1<<27){
     ADC->ADC_MR |=0x00; // free running;
   }
   ADC->ADC_MR |=0x80; // free running
