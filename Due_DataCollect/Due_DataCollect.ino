@@ -25,7 +25,7 @@ void setup(){
   SerialUSB.begin(0);
   while(!SerialUSB);
   pmc_enable_periph_clk(ID_ADC);
-  adc_init(ADC, SystemCoreClock, 21000000UL, ADC_STARTUP_FAST);
+  adc_init(ADC, SystemCoreClock, 21000000L, ADC_STARTUP_FAST);
 //  ADC->ADC_MR |=0x80; // free running
 //  ADC->ADC_MR |= ADC_TRIG_EXT;
 

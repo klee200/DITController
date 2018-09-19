@@ -27,7 +27,6 @@ class DataPort(Serial):
         super(DataPort, self).__init__(baudrate=21000000)
         
         self.dataThread = DataThread(self, controlPort)
-        # self.dataThread.start()
         
     def update(self, value):
         try:
@@ -67,8 +66,6 @@ class DataThread(QThread):
                     print(" ")
                     print(self.n)
                     if self.dataPlotTrigger:
-                        dataStringSlice = self.dataString[self.n - 1] # [self.dataString[i] for i in range(self.n - self.numData, self.n)]
+                        dataStringSlice = self.dataString[self.n - 1]
                         self.updateSignal.emit(dataStringSlice)
-                    # print("length of", self.n, ":", len(self.dataString[self.n]))
-                    # print("not read:", self.dataPort.in_waiting)
                     self.dataString[self.n] = b''

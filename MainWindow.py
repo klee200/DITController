@@ -28,7 +28,7 @@ class MainWindow(QMainWindow):
         self.build_menu()
         self.build_window()
         
-        self.show()
+        self.showMaximized()
         
     def build_menu(self):
         self.menuBar()

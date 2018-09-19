@@ -18,7 +18,7 @@ class ConnectionWindow(QDialog):
         self.setLayout(QGridLayout())
         
         self.layout().addWidget(QLabel("Control"), 0, 0)
-        self.controlBox = QLineEdit("COM7")
+        self.controlBox = QLineEdit("COM6")
         self.layout().addWidget(self.controlBox, 0, 1)
         
         self.line = QFrame()
@@ -26,7 +26,7 @@ class ConnectionWindow(QDialog):
         self.layout().addWidget(self.line, 2, 0, 1, 2)
         
         self.layout().addWidget(QLabel("Data"), 3, 0)
-        self.dataBox = QLineEdit("COM6")
+        self.dataBox = QLineEdit("COM7")
         self.layout().addWidget(self.dataBox, 3, 1)
         
         self.controlConnectBtn = QPushButton('Connect Controller')

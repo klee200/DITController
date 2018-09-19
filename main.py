@@ -6,8 +6,8 @@ import pdb
 
 def main():
     app = QApplication(sys.argv)
-    # app.aboutToQuit.connect(lambda: SaveCheckDialog(controller_interface).exec())
     mainWindow = MainWindow()
+    mainWindow.dataWindow.move(app.screens()[1].geometry().topLeft())
     signalHandler = SignalHandler(mainWindow)
     sys.exit(app.exec())
 
