@@ -9,7 +9,6 @@ class SignalHandler(object):
         mainWindow.openAction.triggered.connect(mainWindow.scanWidget.open_scan)
     
         mainWindow.addRemoveAction.triggered.connect(mainWindow.addRemoveWindow.show)
-        mainWindow.copyAction.triggered.connect(mainWindow.copyWindow.show)
         mainWindow.calcAction.triggered.connect(mainWindow.calcWindow.show)
         
         mainWindow.addRemoveWindow.addSegBtn.clicked.connect(lambda: mainWindow.scanWidget.scanArea.add_segment(int(mainWindow.addRemoveWindow.addPositionBox.text()) - 1))

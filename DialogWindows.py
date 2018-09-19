@@ -7,7 +7,6 @@ import numpy as np
 class ConnectionWindow(QDialog):
     def __init__(self, textWidget):
         super(ConnectionWindow, self).__init__()
-        self.setWindowFlags(Qt.WindowStaysOnTopHint)
         self.textWidget = textWidget
         
         self.controlPort = ControlPort()
@@ -16,6 +15,7 @@ class ConnectionWindow(QDialog):
         self.build_window()
 
     def build_window(self):
+        self.setWindowFlags(Qt.WindowStaysOnTopHint)
         self.setLayout(QGridLayout())
         
         self.layout().addWidget(QLabel("Control"), 0, 0)
@@ -74,10 +74,10 @@ class ConnectionWindow(QDialog):
 class AddRemoveSegmentWindow(QDialog):
     def __init__(self):
         super(AddRemoveSegmentWindow, self).__init__()
-        self.setWindowFlags(Qt.WindowStaysOnTopHint)
         self.build_window()
         
     def build_window(self):
+        self.setWindowFlags(Qt.WindowStaysOnTopHint)
         self.setLayout(QGridLayout())
         
         self.layout().addWidget(QLabel("Insert new segment at position:"), 1, 0)
@@ -92,31 +92,11 @@ class AddRemoveSegmentWindow(QDialog):
         self.removeSegBtn = QPushButton("Remove segment")
         self.layout().addWidget(self.removeSegBtn, 4, 0, 1, 2)
 
-
-class CopySegmentWindow(QDialog):
-    def __init__(self, mainWindow):
-        super(CopySegmentWindow, self).__init__()
-        self.setWindowFlags(Qt.WindowStaysOnTopHint)
-        self.mainWindow = mainWindow
-        self.build_window()
-        
-    def build_window(self):
-        self.setLayout(QGridLayout())
-        
-        self.layout().addWidget(QLabel("Copy segment:"), 0, 0)
-        self.copyBox = QLineEdit()
-        self.layout().addWidget(self.copyBox, 0, 1)
-        self.layout().addWidget(QLabel("to:"), 1, 0)
-        self.pasteBox = QLineEdit()
-        self.layout().addWidget(self.pasteBox, 1, 1)
-        
-        self.copyBtn = QPushButton("Do it")
-        self.layout().addWidget(self.copyBtn)
-
 class CalculatorWindow(QDialog):
     def __init__(self):
         super(CalculatorWindow, self).__init__()
-        self.setWindowFlags(Qt.WindowStaysOnTopHint)
+        
+        self.constant = 0
         
         self.ELECTRON = 1.602e-19
         self.AMU = 1.66e-27
@@ -139,6 +119,7 @@ class CalculatorWindow(QDialog):
         self.signal_handler()
         
     def build_window(self):
+        self.setWindowFlags(Qt.WindowStaysOnTopHint)
         self.setLayout(QGridLayout())
         
         self.layout().addWidget(QLabel("r\u2080 (cm)"), 0, 0)
@@ -177,8 +158,6 @@ class CalculatorWindow(QDialog):
         self.layout().addWidget(QLabel("omega z (Hz)"), 5, 4)
         self.layout().addWidget(self.ozBox, 5, 5)
         self.ozBox.setEnabled(False)
-        
-        self.update()
 
     def signal_handler(self):
         self.rBox.textChanged.connect(self.update)
@@ -191,14 +170,20 @@ class CalculatorWindow(QDialog):
         
         self.freqBtn.clicked.connect(self.calc_freq)
         self.mzBtn.clicked.connect(self.calc_mz)
+        
+        self.update()
+        self.calc_freq()
 
     def update(self):
+        self.targetBox.setText(str(max(min(float(self.targetBox.text()), 1), 0)))
+        
         self.calc_beta_r()
         self.calc_beta_z()
         self.calc_omega_r()
         self.calc_omega_z()
         
-        self.targetBox.setText(str(max(min(float(self.targetBox.text()), 1), 0)))
+        self.constant = float(self.freqBox.text())**2 * float(self.mzBox.text())
+        print(self.constant)
 
     def calc_beta_r(self):
         try:

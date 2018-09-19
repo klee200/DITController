@@ -19,7 +19,6 @@ class MainWindow(QMainWindow):
         
         self.connectWindow = ConnectionWindow(self.textWidget)
         self.addRemoveWindow = AddRemoveSegmentWindow()
-        self.copyWindow = CopySegmentWindow(self)
         self.calcWindow = CalculatorWindow()
         self.calibrateWindow = PlotCalibrateWindow(self)
         
@@ -39,7 +38,6 @@ class MainWindow(QMainWindow):
         
         self.editMenu = self.menuBar().addMenu("Edit")
         self.addRemoveAction = self.editMenu.addAction("Add/Remove segments")
-        self.copyAction = self.editMenu.addAction("Copy segment")
         self.calcAction = self.editMenu.addAction("Calculator")
         self.calibrateAction = self.editMenu.addAction("Calibrate plot")
         

@@ -70,6 +70,8 @@ class DataPlot(pg.PlotWidget):
         self.build_widget()
         
     def build_widget(self):
+        self.getPlotItem().getAxis('left').setStyle(tickLength=5)
+        self.getPlotItem().getAxis('bottom').setStyle(tickLength=5)
         self.setLabel('bottom', text='Data point')
         self.setLabel('left', text='Intensity')
         self.setDownsampling(auto=True, mode='mean')
@@ -113,6 +115,8 @@ class DisplayDataPlot(pg.PlotWidget):
         self.build_widget()
         
     def build_widget(self):
+        self.getPlotItem().getAxis('left').setStyle(tickLength=5)
+        self.getPlotItem().getAxis('bottom').setStyle(tickLength=5)
         self.setLabel('bottom', text='Data point')
         self.setLabel('left', text='Intensity')
         self.setDownsampling(auto=True, mode='mean')
