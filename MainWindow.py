@@ -20,7 +20,7 @@ class MainWindow(QMainWindow):
         self.connectWindow = ConnectionWindow(self.textWidget)
         self.addRemoveWindow = AddRemoveSegmentWindow()
         self.copyWindow = CopySegmentWindow(self)
-        self.calcWindow = CalculatorWindow(self)
+        self.calcWindow = CalculatorWindow()
         self.calibrateWindow = PlotCalibrateWindow(self)
         
         self.dataWindow = DataWindow(self.connectWindow.dataPort.dataThread.dataPlotTrigger)
@@ -56,80 +56,6 @@ class MainWindow(QMainWindow):
         self.centralWidget().layout().addWidget(self.scanWidget, 0, 0, 2, 1)
         self.centralWidget().layout().addWidget(self.btnWidget, 0, 1)
         self.centralWidget().layout().addWidget(self.textWidget, 1, 1)
-
-        # # Top right displays frequency and m/z options
-        # self.conversion_layout = QGridLayout()
-        # # Add layout to right half
-        # self.rightLayout.addLayout(self.conversion_layout)
-        # # Create buttons at locations (row, column) in grid
-        # # Select frequency or m/z display
-        # self.frequency_button = QRadioButton("Frequency")
-        # self.conversion_layout.addWidget(self.frequency_button, 0, 0)
-        # self.mass_button = QRadioButton("m/z")
-        # self.conversion_layout.addWidget(self.mass_button, 0, 1)
-        # self.convert_buttons = QButtonGroup()
-        # self.convert_buttons.addButton(self.frequency_button)
-        # self.convert_buttons.addButton(self.mass_button)
-        # # Initial state
-        # self.frequency_button.setChecked(True)
-        # self.mass_button.setCheckable(False)
-        # # Create label and box for conversion constant
-        # self.conversion_layout.addWidget(QLabel("Drive constant"), 1, 0)
-        # self.conv_const_box = QLineEdit()
-        # self.conversion_layout.addWidget(self.conv_const_box, 1, 1)
-        # self.conv_const_box.textChanged.connect(lambda: self.setConversionState(self.conv_const_box.text(), self.tickle_const_box.text()))
-        # self.conversion_layout.addWidget(QLabel("Tickle constant"), 2, 0)
-        # self.tickle_const_box = QLineEdit()
-        # self.conversion_layout.addWidget(self.tickle_const_box, 2, 1)
-        # self.tickle_const_box.textChanged.connect(lambda: self.setConversionState(self.conv_const_box.text(), self.tickle_const_box.text()))
-        # # Number display select functions
-        # self.frequency_button.toggled.connect(lambda: self.convertNumbers(self.conv_const_box.text(), self.tickle_const_box.text()))
-
-        # Middle right displays buttons in grid layout
-        # self.buttonLayout = QGridLayout()
-        # Add button layout to right half
-        # self.rightLayout.addLayout(self.buttonLayout)
-        # Download button
-        # self.downloadBtn = QPushButton("Download Scan")
-        # self.buttonLayout.addWidget(self.downloadBtn, 4, 0)
-        # Download button function
-        # self.downloadBtn.clicked.connect(self.download_scan)
-        # Upload button
-        # self.uploadBtn = QPushButton("Upload Scan")
-        # self.buttonLayout.addWidget(self.uploadBtn, 4, 1)
-        # Upload button function
-        # self.uploadBtn.clicked.connect(self.upload_scan)
-        # Run button
-        # self.runBtn = QPushButton("Run Scan")
-        # self.buttonLayout.addWidget(self.runBtn, 5, 0)
-        # Run button function
-        # self.runBtn.clicked.connect(self.run_scan)
-        # Stop button
-        # self.stopBtn = QPushButton("Stop Scan")
-        # self.buttonLayout.addWidget(self.stopBtn, 5, 1)
-        # Stop button function
-        # self.stopBtn.clicked.connect(self.stop_scan)
-        # self.stopBtn.setEnabled(False)
-
-    # def setConversionState(self, drive_constant, tickle_constant):
-    #     try:
-    #         # If constant box has a number allow user to push conversion buttons
-    #         float(drive_constant)
-    #         float(tickle_constant)
-    #         self.frequency_button.setCheckable(True)
-    #         self.mass_button.setCheckable(True)
-    #     except:
-    #         # Otherwise the user cannot push buttons (based on which is already pushed)
-    #         if self.frequency_button.isChecked():
-    #             self.mass_button.setCheckable(False)
-    #         else:
-    #             self.frequency_button.setCheckable(False)
-    #
-    # def convertNumbers(self, conversion_constant, tickle_constant):
-    #     if self.frequency_button.isChecked() == True:
-    #         self.scanFunction.convertToFrequency(conversion_constant, tickle_constant)
-    #     elif self.mass_button.isChecked() == True:
-    #         self.scanFunction.convertToMass(conversion_constant, tickle_constant)
     
     def closeEvent(self, event):
         event.ignore()
@@ -140,8 +66,6 @@ class MainWindow(QMainWindow):
             if choice == QMessageBox.Yes:
                 self.scanWidget.save_scan()
             sys.exit()
-    
-
     
     def download_scan(self):
         try:
@@ -186,8 +110,6 @@ class MainWindow(QMainWindow):
             self.btnWidget.stopBtn.setEnabled(False)
         except SerialException:
             self.announcer.appendPlainText("No serial port found")
-
-
         
 class BtnWidget(QWidget):
     def __init__(self):

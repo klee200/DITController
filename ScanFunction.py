@@ -31,13 +31,11 @@ class ScanWidget(QSplitter):
         self.scanFunction = ScanFunction()
         
         self.scanArea = ScanArea(self.scanFunction)
-        # self.scanPlot = ScanPlot(self.scanFunction)
         
         self.build_widget()
         
     def build_widget(self):
         self.addWidget(self.scanArea)
-        # self.addWidget(self.scanPlot)
         
     def save_check(self):
         msgBox = QMessageBox()
@@ -284,61 +282,6 @@ class ListParsModel(ParameterModel):
     def removeColumn(self, position, parent):
         self.beginRemoveColumns(parent, position, position)
         self.endRemoveColumns()
-
-class ScanPlot(pg.PlotWidget):
-    def __init__(self):
-        super(ScanFunctionPlot, self).__init__()
-        # Create time axis label
-        self.setLabel('bottom', text='Time', units='s')
-        self.setLabel('left', text='Frequency', units='Hz')
-
-    def generatePlotData(self, scan_function):
-        self.x_values = []
-        self.y_values = []
-        for output in range(3):
-            self.y_values.append([])
-        self.digital_values = []
-        for digital in range(21):
-            self.digital_values.append([])
-
-        for segment in scan_function:
-            # Segment start time and frequency
-            try:
-                self.x_values.append(self.x_values[-1])
-            except:
-                self.x_values.append(0)
-
-            for output in range(len(segment.output_list)):
-                try:
-                    self.y_values[output].append(float(segment.output_list[output].parameter_dict['Start'][1].text()))
-                except:
-                    self.y_values[output].append(0)
-
-            # Segment end time and frequency
-            try:
-                self.x_values.append(float(segment.duration_box.text())/1000 + float(self.x_values[-1]))
-            except:
-                self.x_values.append(0)
-
-            for output in range(len(segment.output_list)):
-                # if segment.output_list[output].parameter_dict['Type'][1].currentText() in ["Fixed", "CID"]:
-                #     self.y_values[output].append(self.y_values[output][-1])
-                # else:
-                    try:
-                        self.y_values[output].append(float(segment.output_list[output].parameter_dict['End'][1].text()))
-                    except:
-                        self.y_values[output].append(0)
-
-    def updatePlot(self, scan_function):
-        # if frequency_mode == True:
-        #     self.setLabel('left', text='Frequency', units='Hz')
-        # else:
-        #     self.setLabel('left', text='m/z', units='Th')
-
-        self.generatePlotData(scan_function)
-        self.plotItem.clear()
-        for output in range(3):
-            self.plotItem.plot(self.x_values, self.y_values[output], pen=output)
 
 class RangedFloat(float):
     def __new__(cls, value):
