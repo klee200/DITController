@@ -20,7 +20,7 @@ class MainWindow(QMainWindow):
         self.connectWindow = ConnectionWindow(self.textWidget)
         self.addRemoveWindow = AddRemoveSegmentWindow()
         self.calcWindow = CalculatorWindow()
-        self.calibrateWindow = PlotCalibrateWindow(self)
+        # self.calibrateWindow = CalibrateWindow(self)
         
         self.dataWindow = DataWindow(self.connectWindow.dataPort.dataThread.dataPlotTrigger)
         

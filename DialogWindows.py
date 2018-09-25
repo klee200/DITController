@@ -93,6 +93,8 @@ class AddRemoveSegmentWindow(QDialog):
         self.layout().addWidget(self.removeSegBtn, 4, 0, 1, 2)
 
 class CalculatorWindow(QDialog):
+    updated = pyqtSignal(object)
+
     def __init__(self):
         super(CalculatorWindow, self).__init__()
         
@@ -183,7 +185,7 @@ class CalculatorWindow(QDialog):
         self.calc_omega_z()
         
         self.constant = float(self.freqBox.text())**2 * float(self.mzBox.text())
-        print(self.constant)
+        self.updated.emit(str(self.constant))
 
     def calc_beta_r(self):
         try:
@@ -305,6 +307,29 @@ class CalculatorWindow(QDialog):
                     self.mzBox.setText(str(float(self.mzBox.text()) + pow(10, i)))
                 self.mzBox.setText(str(float(self.mzBox.text()) - pow(10, i)))
 
+class CalibrateWindow(QDialog):
+    def __init__(self):
+        super(CalibrateWindow, self).__init__()
+        
+        self.values = range(0, 100)
+        
+        self.build_window()
+        
+    def build_window(self):
+        self.setWindowFlags(Qt.WindowStaysOnTopHint)
+        self.setLayout(QGridLayout())
+        
+        self.table = QTableWidget(2, 2)
+        self.layout().addWidget(self.table)
+        self.table.setHorizontalHeaderLabels(['points', 'frequency'])
+        self.table.setVerticalHeaderLabels(['start', 'end'])
+        
+        self.values = range(0, 100)
+        
+    def update(self):
+        self.values = range(constant / values[0]**2, constant / values[1]**2, round((constant / values[1]**2 - constant / values[0]**2) / length))
+
+                
 class PlotCalibrateWindow(QDialog):
     def __init__(self, mainWindow):
         super(PlotCalibrateWindow, self).__init__()

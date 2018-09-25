@@ -22,6 +22,10 @@ class SignalHandler(object):
         mainWindow.connectWindow.dataDisconnectBtn.clicked.connect(mainWindow.connectWindow.disconnect_data)
         mainWindow.connectWindow.dataPort.dataThread.updateSignal.connect(mainWindow.dataWindow.dataPlot.update)
         
+        mainWindow.calcWindow.updated.connect(mainWindow.dataWindow.dataToolWidget.constBox.setText)
+        mainWindow.calcWindow.updated.connect(mainWindow.dataWindow.displayToolWidget.constBox.setText)
+        mainWindow.calcWindow.updated.emit(str(mainWindow.calcWindow.constant))
+        
         mainWindow.btnWidget.runBtn.clicked.connect(mainWindow.run_scan)
         mainWindow.btnWidget.stopBtn.clicked.connect(mainWindow.stop_scan)
         mainWindow.btnWidget.downloadBtn.clicked.connect(mainWindow.download_scan)

@@ -44,14 +44,17 @@ class ScanWidget(QSplitter):
         return msgBox.exec()
         
     def save_scan(self):
-        fileName = QFileDialog.getSaveFileName(filter='Scan Files (*.scan);;Text Files (*.txt)')[0]
-        file = open(fileName, 'w')
-        file.write(json.dumps(self.scanFunction, sort_keys=False, indent=4))
-        file.close()
-        
-        scanPic = self.scanArea.widget().grab()
-        scanPicFileName = fileName.replace('.scan', '.jpg')
-        scanPic.save(scanPicFileName, 'jpg')
+        try:
+            fileName = QFileDialog.getSaveFileName(filter='Scan Files (*.scan);;Text Files (*.txt)')[0]
+            file = open(fileName, 'w')
+            file.write(json.dumps(self.scanFunction, sort_keys=False, indent=4))
+            file.close()
+            
+            scanPic = self.scanArea.widget().grab()
+            scanPicFileName = fileName.replace('.scan', '.jpg')
+            scanPic.save(scanPicFileName, 'jpg')
+        except FileNotFoundError:
+            self.textWidget.appendPlainText("File save failed")
         
     def open_scan(self):
         choice = self.save_check()
@@ -72,7 +75,7 @@ class ScanWidget(QSplitter):
                 self.scanFunction.reset(newScanFunction)
                 
                 file.close()
-            except:
+            except FileNotFoundError:
                 self.textWidget.appendPlainText("File open failed")
         
 class ScanArea(QScrollArea):
@@ -83,7 +86,7 @@ class ScanArea(QScrollArea):
         self.headerTypes = [str, Bool, Bool, PosFloat]
         self.OUTPUTS = 3
         self.outputLabels = ["Start", "End", "Duty Cycle", "Tickle", "Amplitude", "Phase"]
-        self.outputTypes = [FreqFloat, FreqFloat, DCFloat, DivChoice, AmpFloat, Bool]
+        self.outputTypes = [FreqFloat, FreqFloat, DCFloat, DivChoice, AmpFloat, PhaseChoice]
         self.ANALOG = 8
         self.analogLabels = ["A" + str(i + 1) for i in range(self.ANALOG)]
         self.analogTypes = [RangedFloat for i in range(self.ANALOG)]
@@ -182,6 +185,13 @@ class HeaderModel(ParameterModel):
     def data(self, index, role):
         if role == Qt.DisplayRole:
             return str(self.scanFunction[index.column()][self.labels[index.row()]])
+        if role == Qt.BackgroundRole:
+            if self.scanFunction[index.column()][self.labels[index.row()]] == "False":
+                return QBrush(QColor('red'))
+            elif self.scanFunction[index.column()][self.labels[index.row()]] == "True":
+                return QBrush(QColor('green'))
+            else:
+                return QBrush(QColor('white'))
                     
     def setData(self, index, value, role):
         if role == Qt.EditRole:
@@ -222,8 +232,11 @@ class OutputModel(ParameterModel):
     def data(self, index, role):
         if role == Qt.DisplayRole:
             return str(self.scanFunction[index.column()]["Outputs"][self.output][self.labels[index.row()]])
-        if role == Qt.ToolTipRole and self.labels[index.row()] == "Tickle":
-            return "Div / [value here] or Output 3"
+        if role == Qt.ToolTipRole:
+            if self.labels[index.row()] == "Tickle":
+                return "Div / [value here] or Output 3"
+            if self.labels[index.row()] == "Phase":
+                return "0 or 180 (degrees)"
         
     def setData(self, index, value, role):
         if role == Qt.EditRole:
@@ -258,6 +271,13 @@ class ListParsModel(ParameterModel):
     def data(self, index, role):
         if role == Qt.DisplayRole:
             return str(self.scanFunction[index.column()][self.name][index.row()])
+        if role == Qt.BackgroundRole:
+            if self.scanFunction[index.column()][self.name][index.row()] == "False":
+                return QBrush(QColor('red'))
+            elif self.scanFunction[index.column()][self.name][index.row()] == "True":
+                return QBrush(QColor('green'))
+            else:
+                return QBrush(QColor('white'))
         
     def setData(self, index, value, role):
         if role == Qt.EditRole:
@@ -342,4 +362,16 @@ class DivChoice(str):
                 raise ValueError()
         except ValueError:
             s = "Output 3"
+        return s
+        
+class PhaseChoice(int):
+    def __new__(cls, value):
+        try:
+            v = int(value)
+            if v == 0:
+                s = v
+            else:
+                s = 180
+        except ValueError:
+            s = 0
         return s
