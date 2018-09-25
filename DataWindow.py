@@ -52,6 +52,7 @@ class DataToolWidget(QWidget):
         
     def build_widget(self):
         self.setLayout(QGridLayout())
+        
         self.saveBtn = QPushButton("Save")
         self.layout().addWidget(self.saveBtn, 0, 0)
         
@@ -68,11 +69,11 @@ class DataToolWidget(QWidget):
         self.endFreqBox = QLineEdit()
         self.layout().addWidget(self.endFreqBox, 0, 6)
         
-        self.layout().addWidget(QLabel("Constant"), 1, 4)
+        self.layout().addWidget(QLabel("Constant"), 0, 7)
         self.constBox = QLineEdit()
-        self.layout().addWidget(self.constBox, 1, 5)
+        self.layout().addWidget(self.constBox, 0, 8)
         self.calibrateBtn = QPushButton("Calibrate")
-        self.layout().addWidget(self.calibrateBtn, 1, 6)
+        self.layout().addWidget(self.calibrateBtn, 0, 9)
                     
 class DisplayToolWidget(QWidget):
     def __init__(self):
@@ -82,29 +83,23 @@ class DisplayToolWidget(QWidget):
         
     def build_widget(self):
         self.setLayout(QGridLayout())
-        self.saveBtn = QPushButton("Save")
-        self.layout().addWidget(self.saveBtn, 0, 0)
+        
         self.openBtn = QPushButton("Open")
-        self.layout().addWidget(self.openBtn, 1, 0)
+        self.layout().addWidget(self.openBtn, 0, 0)
+        self.saveBtn = QPushButton("Save")
+        self.layout().addWidget(self.saveBtn, 0, 1)
         
-        self.layout().addWidget(QLabel("Averages"), 0, 1)
-        self.countBox = QLineEdit("0")
-        self.countBox.setEnabled(False)
-        self.layout().addWidget(self.countBox, 0, 2)
-        self.averagesBox = QLineEdit("1")
-        self.layout().addWidget(self.averagesBox, 1, 2)
-        
-        self.layout().addWidget(QLabel("Frequencies"), 0, 4)
+        self.layout().addWidget(QLabel("Frequencies"), 0, 2)
         self.startFreqBox = QLineEdit()
-        self.layout().addWidget(self.startFreqBox, 0, 5)
+        self.layout().addWidget(self.startFreqBox, 0, 3)
         self.endFreqBox = QLineEdit()
-        self.layout().addWidget(self.endFreqBox, 0, 6)
+        self.layout().addWidget(self.endFreqBox, 0, 4)
         
-        self.layout().addWidget(QLabel("Constant"), 1, 4)
+        self.layout().addWidget(QLabel("Constant"), 0, 5)
         self.constBox = QLineEdit()
-        self.layout().addWidget(self.constBox, 1, 5)
+        self.layout().addWidget(self.constBox, 0, 6)
         self.calibrateBtn = QPushButton("Calibrate")
-        self.layout().addWidget(self.calibrateBtn, 1, 6)
+        self.layout().addWidget(self.calibrateBtn, 0, 7)
        
 class Plot(pg.PlotWidget):
     def __init__(self):
@@ -142,9 +137,8 @@ class Plot(pg.PlotWidget):
             endMz = float(constant) / float(endFreq)**2
             stepMz = (endMz - startMz) / len(self.y)
             self.x = [startMz + i * stepMz for i in range(len(self.y))]
-        except ValueError:
+        except (ValueError, ZeroDivisionError) as error:
             self.x = range(len(self.y))
-        print(len(self.x))
         
         if len(self.x) > 0:
             self.plot(self.x, self.y, clear=True)
@@ -168,9 +162,9 @@ class DataPlot(Plot):
             self.y = [sum(i) / len(self.data) for i in zip(*self.data)]
         else:
             self.y = [(self.y[i] * (len(self.data) - 1) + self.data[-1][i]) / len(self.data) for i in range(len(self.y)) if len(self.data[-1]) >= len(self.y)]
-        print(len(self.y))
+
         if len(self.y) > 0:
-            if len(self.x) > len(self.y):
+            if len(self.x) >= len(self.y):
                 self.plot(self.x[0:len(self.y)], self.y, clear=True)
             else:
                 self.plot(range(len(self.y)), self.y, clear=True)
