@@ -28,12 +28,6 @@ class DataPort(Serial):
         
         self.dataThread = DataThread(self, controlPort)
         
-    def update(self, value):
-        try:
-            self.dataThread.numData = int(value)
-        except:
-            self.dataThread.numData = 1
-        
 class DataThread(QThread):
     updateSignal = pyqtSignal(object)
     

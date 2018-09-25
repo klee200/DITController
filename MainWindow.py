@@ -20,7 +20,6 @@ class MainWindow(QMainWindow):
         self.connectWindow = ConnectionWindow(self.textWidget)
         self.addRemoveWindow = AddRemoveSegmentWindow()
         self.calcWindow = CalculatorWindow()
-        # self.calibrateWindow = CalibrateWindow(self)
         
         self.dataWindow = DataWindow(self.connectWindow.dataPort.dataThread.dataPlotTrigger)
         
@@ -107,7 +106,7 @@ class MainWindow(QMainWindow):
             self.btnWidget.runBtn.setEnabled(True)
             self.btnWidget.stopBtn.setEnabled(False)
         except SerialException:
-            self.announcer.appendPlainText("No serial port found")
+            self.textWidget.appendPlainText("No serial port found")
         
 class BtnWidget(QWidget):
     def __init__(self):

@@ -182,14 +182,6 @@ class DataPlot(Plot):
             self.numAverages = int(value)
         except ValueError:
             self.numAverages = 1
-            
-    # def calibrate(self, constant, startFreq, endFreq):
-        # try:
-            # self.axisLimits[0] = float(constant) / float(startFreq)**2
-            # self.axisLimits[1] = float(constant) / float(endFreq)**2
-        # except ValueError:
-            # self.axisLimits = [0, 1000]
-        # print(self.axisLimits)
                
 class DisplayPlot(Plot):
     def __init__(self):

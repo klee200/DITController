@@ -7,9 +7,6 @@ import pyqtgraph as pg
 import json
 import pdb
 
-NUM_OUTPUTS = 3
-WIDTH = 95
-HEIGHT = 24
 
 class ScanFunction(list):
     def __init__(self):
@@ -114,7 +111,7 @@ class ScanArea(QScrollArea):
         self.digitalView.setupModel(ListParsModel(scanFunction, "Digital", self.digitalLabels, self.digitalTypes))
         
         self.widget().layout().addWidget(self.headerView)
-        for i in range(NUM_OUTPUTS):
+        for i in range(self.OUTPUTS):
             self.widget().layout().addWidget(self.outputViewList[i])
         self.widget().layout().addWidget(self.analogView)
         self.widget().layout().addWidget(self.digitalView)
@@ -127,14 +124,14 @@ class ScanArea(QScrollArea):
         
     def add_segment(self, position):
         self.headerView.model().insertColumn(position, QModelIndex())
-        for i in range(NUM_OUTPUTS):
+        for i in range(self.OUTPUTS):
             self.outputViewList[i].model().insertColumn(position, QModelIndex())
         self.analogView.model().insertColumn(position, QModelIndex())
         self.digitalView.model().insertColumn(position, QModelIndex())
         
     def remove_segment(self, position):
         if self.headerView.model().removeColumn(position, QModelIndex()):
-            for i in range(NUM_OUTPUTS):
+            for i in range(self.OUTPUTS):
                 self.outputViewList[i].model().removeColumn(position, QModelIndex())
             self.analogView.model().removeColumn(position, QModelIndex())
             self.digitalView.model().removeColumn(position, QModelIndex())
