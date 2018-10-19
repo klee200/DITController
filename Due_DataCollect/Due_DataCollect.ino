@@ -46,8 +46,8 @@ void setup(){
 }
 
 void loop(){
-  while((PIOB->PIO_PDSR & 1<<27) != 1<<27){
-    ADC->ADC_MR |=0x00; // free running;
+  while((PIOB->PIO_PDSR & 1<<27) != 1<<27) {
+    ADC->ADC_MR &=0x7F;
   }
   ADC->ADC_MR |=0x80; // free running
   while(obufn==bufn); // wait for buffer to be full

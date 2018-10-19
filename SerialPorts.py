@@ -2,6 +2,7 @@ from threading import Lock
 from PyQt5.QtCore import *
 
 from serial import *
+from time import *
 import pdb
 
 
@@ -40,7 +41,7 @@ class DataThread(QThread):
         
         self.n = 0
         self.numData = 1
-        self.maxNumData = 100
+        self.maxNumData = 500
         self.dataString = [b'' for n in range(self.maxNumData)]
         self.data = [[] for n in range(self.numData)]
         
