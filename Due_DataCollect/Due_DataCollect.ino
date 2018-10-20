@@ -50,7 +50,8 @@ void loop(){
     ADC->ADC_MR &=0x7F;
   }
   ADC->ADC_MR |=0x80; // free running
-  while(obufn==bufn); // wait for buffer to be full
-  SerialUSB.write((uint8_t *)buf[obufn],256); // send it - 512 bytes = 256 uint16_t
+  //while(obufn==bufn); // wait for buffer to be full
+  while((obufn + 1)%4==bufn); // wait for buffer to be full
+  SerialUSB.write((uint8_t *)buf[obufn],512); // send it - 512 bytes = 256 uint16_t
   obufn=(obufn+1)&3;
 }
