@@ -105,7 +105,7 @@ class Plot(pg.PlotWidget):
     def __init__(self):
         super(Plot, self).__init__()
         
-        self.x = [0, 1000]
+        self.x = []
         self.y = []
         
         self.build_widget()
@@ -122,7 +122,9 @@ class Plot(pg.PlotWidget):
         try:
             fileName = QFileDialog.getSaveFileName(filter='Text Files (*.txt)')[0]
             file = open(fileName, 'w')
-            for i in range(len(self.x)):
+            if len(self.x) < len(self.y):
+                self.x = range(len(self.y))
+            for i in range(len(self.y)):
                 file.write(str(self.x[i]))
                 file.write("\t")
                 file.write(str(self.y[i]))
@@ -155,21 +157,21 @@ class DataPlot(Plot):
         self.build_widget()
 
     def update(self, data_string):
-        self.dataPlotTrigger = False
-        self.data.append([data_string[j * 2] + data_string[j * 2 + 1] * 256 for j in range(int(len(data_string) / 2))])
-        if len(self.data) > self.numAverages:
-            self.data = self.data[-self.numAverages:]
-            self.y = [sum(i) / len(self.data) for i in zip(*self.data)]
-        else:
-            self.y = [(self.y[i] * (len(self.data) - 1) + self.data[-1][i]) / len(self.data) for i in range(len(self.y)) if len(self.data[-1]) >= len(self.y)]
-
-        if len(self.y) > 0:
-            if len(self.x) >= len(self.y):
-                self.plot(self.x[0:len(self.y)], self.y, clear=True)
+        if len(data_string) / 2 >= 0.9 * len(self.y):
+            self.dataPlotTrigger = False
+            self.data.append([data_string[j * 2] + data_string[j * 2 + 1] * 256 for j in range(int(len(data_string) / 2))])
+            if len(self.data) > self.numAverages:
+                self.data = self.data[-self.numAverages:]
+                self.y = [sum(i) / len(self.data) for i in zip(*self.data)]
             else:
-                self.plot(range(len(self.y)), self.y, clear=True)
-        self.updated.emit(str(len(self.data)))
-        self.dataPlotTrigger = True
+                self.y = [(self.y[i] * (len(self.data) - 1) + self.data[-1][i]) / len(self.data) for i in range(len(self.y)) if len(self.data[-1]) >= len(self.y)]
+
+            if len(self.y) > 0:
+                if len(self.x) < len(self.y):
+                    self.x = range(len(self.y))
+                self.plot(self.x[0:len(self.y)], self.y, clear=True)
+            self.updated.emit(str(len(self.data)))
+            self.dataPlotTrigger = True
         
     def set_averages(self, value):
         try:
@@ -201,5 +203,5 @@ class DisplayPlot(Plot):
             file.close()
             
             self.plot(self.x, self.y, clear=True)
-        except FileNotFoundError:
+        except:
             None

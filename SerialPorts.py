@@ -41,7 +41,7 @@ class DataThread(QThread):
         
         self.n = 0
         self.numData = 1
-        self.maxNumData = 500
+        self.maxNumData = 100
         self.dataString = [b'' for n in range(self.maxNumData)]
         self.data = [[] for n in range(self.numData)]
         
