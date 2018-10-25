@@ -15,10 +15,8 @@ class ScanFunction(list):
     def reset(self, newScanFunction):
         while len(self) > 0:
             self.remove(self[0])
-            print(len(self))
         for seg in newScanFunction:
             self.append(seg)
-        print(len(self))
 
 class ScanWidget(QSplitter):
     def __init__(self, textWidget):

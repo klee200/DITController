@@ -15,7 +15,7 @@ uint16_t buf[4][256];   // 4 buffers of 256 readings
 void ADC_Handler(){     // move DMA pointers to next buffer
   int f=ADC->ADC_ISR;
   if (f&(1<<27)){
-    bufn=(bufn+1)&3;
+    bufn=(bufn+1)%4;
     ADC->ADC_RNPR=(uint32_t)buf[bufn];
     ADC->ADC_RNCR=256;
   }
@@ -38,20 +38,24 @@ void setup(){
   ADC->ADC_RCR=256;
   ADC->ADC_RNPR=(uint32_t)buf[1]; // next DMA buffer
   ADC->ADC_RNCR=256;
-  bufn=obufn=1;
+  obufn=0;
+  bufn=1;
   ADC->ADC_PTCR=1;
   ADC->ADC_CR=2;
 
   pinMode(13, INPUT);
 }
-
+const byte end_byte[4] = {'s', 't', 'o', 'p'};
 void loop(){
-  while((PIOB->PIO_PDSR & 1<<27) != 1<<27) {
-    ADC->ADC_MR &=0x7F;
-  }
+//  ADC->ADC_MR=0x00000000;
+  while((PIOB->PIO_PDSR & 1<<27) != 1<<27);
   ADC->ADC_MR |=0x80; // free running
-  //while(obufn==bufn); // wait for buffer to be full
-  while((obufn + 1)%4==bufn); // wait for buffer to be full
-  SerialUSB.write((uint8_t *)buf[obufn],512); // send it - 512 bytes = 256 uint16_t
-  obufn=(obufn+1)&3;
+  while((PIOB->PIO_PDSR & 1<<27) == 1<<27) {
+//    while(obufn==bufn); // wait for buffer to be full
+    while((obufn+1)%4==bufn); // wait for buffer to be full
+    SerialUSB.write((uint8_t *)buf[obufn],512); // send it - 512 bytes = 256 uint16_t
+    obufn=(obufn+1)%4;
+  }
+  SerialUSB.write(end_byte, 4);
+  ADC->ADC_MR &=0xFFFFFF7F;
 }

@@ -25,7 +25,7 @@ class ControlPort(Serial):
         
 class DataPort(Serial):
     def __init__(self, controlPort):
-        super(DataPort, self).__init__(baudrate=21000000)
+        super(DataPort, self).__init__()
         
         self.dataThread = DataThread(self, controlPort)
         
@@ -52,15 +52,14 @@ class DataThread(QThread):
         while self.dataPort.is_open:
             self.dataPort.reset_input_buffer()
             while self.controlPortAccess:
-                self.dataString[self.n] += self.dataPort.read(self.dataPort.in_waiting)
+                if self.dataPort.in_waiting:
+                    self.dataString[self.n] += self.dataPort.read(self.dataPort.in_waiting)
                 if self.controlPort.in_waiting:
                     self.controlPort.reset_input_buffer()
                     while self.dataPort.in_waiting:
                         self.dataString[self.n] += self.dataPort.read(self.dataPort.in_waiting)
-                    self.n = (self.n + 1) % self.maxNumData
-                    print(" ")
-                    print(self.n)
                     if self.dataPlotTrigger:
-                        dataStringSlice = self.dataString[self.n - 1]
-                        self.updateSignal.emit(dataStringSlice)
+                        self.updateSignal.emit(self.dataString[self.n])
+                    self.n = (self.n + 1) % self.maxNumData
                     self.dataString[self.n] = b''
+                    self.dataPort.reset_input_buffer()
