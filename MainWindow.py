@@ -73,7 +73,7 @@ class MainWindow(QMainWindow):
             for readInput in readInputList:
                 self.textWidget.appendPlainText(readInput)
         except SerialException:
-            self.textChanged.appendPlainText("No serial port found")
+            self.textWidget.appendPlainText("No serial port found")
 
     def upload_scan(self):
         try:

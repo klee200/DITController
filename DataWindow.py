@@ -43,6 +43,7 @@ class DataWindow(QMainWindow):
         
     def closeEvent(self, event):
         event.ignore()
+        self.update()
         
 class DataToolWidget(QWidget):
     def __init__(self):
@@ -157,21 +158,18 @@ class DataPlot(Plot):
         self.build_widget()
 
     def update(self, data_string):
-        if len(data_string) / 2 >= 0.9 * len(self.y):
-            self.dataPlotTrigger = False
-            self.data.append([data_string[j * 2] + data_string[j * 2 + 1] * 256 for j in range(int(len(data_string) / 2))])
-            if len(self.data) > self.numAverages:
-                self.data = self.data[-self.numAverages:]
-                self.y = [sum(i) / len(self.data) for i in zip(*self.data)]
-            else:
-                self.y = [(self.y[i] * (len(self.data) - 1) + self.data[-1][i]) / len(self.data) for i in range(len(self.y)) if len(self.data[-1]) >= len(self.y)]
-
-            if len(self.y) > 0:
-                if len(self.x) < len(self.y):
-                    self.x = range(len(self.y))
-                self.plot(self.x[0:len(self.y)], self.y, clear=True)
-            self.updated.emit(str(len(self.data)))
-            self.dataPlotTrigger = True
+        self.dataPlotTrigger = False
+        self.data.append([data_string[j * 2] + data_string[j * 2 + 1] * 256 for j in range(int(len(data_string) / 2))])
+        if len(self.data) > self.numAverages:
+            self.data = self.data[-self.numAverages:]
+        self.y = [sum(d) / len(self.data) for d in zip(*self.data)]
+        if len(self.y) > 0:
+            if len(self.x) < len(self.y):
+                self.x = range(len(self.y))
+            self.plot(self.x[0:len(self.y)], self.y, clear=True)
+            print(len(self.y))
+        self.updated.emit(str(len(self.data)))
+        self.dataPlotTrigger = True
         
     def set_averages(self, value):
         try:
@@ -182,9 +180,6 @@ class DataPlot(Plot):
 class DisplayPlot(Plot):
     def __init__(self):
         super(DisplayPlot, self).__init__()
-        
-        self.x = [0, 1000]
-        self.y = []
         
         self.build_widget()
         

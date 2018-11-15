@@ -59,6 +59,11 @@ Output::Output(uint8_t output_index, JsonObject& parameters, uint32_t num_freque
   {
     tickle_amplitude = 0;
   }
+  tickle_phase = parameters["Phase"];
+  if(tickle_phase != tickle_phase)
+  {
+    tickle_phase = 0;
+  }
   const char* tickle = parameters["Tickle"];
   if(strcmp(tickle, "Drive / 2") == 0)
   {
@@ -88,13 +93,14 @@ Output::Output(uint8_t output_index, JsonObject& parameters, uint32_t num_freque
 
 void Output::print()
 {
-  SerialASC.print("Output: "); SerialASC.println(output_number);
-  SerialASC.print("Start Frequency: "); SerialASC.println(start_frequency);
-  SerialASC.print("End Frequency: "); SerialASC.println(end_frequency);
-  SerialASC.print("Duty Cycle: "); SerialASC.println(duty_cycle);
-  SerialASC.print("Tickle"); SerialASC.println(tickle_div);
-  SerialASC.print("Tickle Amplitude"); SerialASC.println(tickle_amplitude);
-  SerialASC.print("Tickle Phase"); SerialASC.println(tickle_phase);
+  SerialASC.println("--------------------------------------------------");
+  SerialASC.print("Output:\t\t"); SerialASC.println(output_number);
+  SerialASC.print("Start Frequency:\t"); SerialASC.println(start_frequency);
+  SerialASC.print("End Frequency:\t\t"); SerialASC.println(end_frequency);
+  SerialASC.print("Duty Cycle:\t\t"); SerialASC.println(duty_cycle);
+  SerialASC.print("Tickle:\t\t"); SerialASC.println(tickle_div);
+  SerialASC.print("Tickle Amplitude:\t"); SerialASC.println(tickle_amplitude);
+  SerialASC.print("Tickle Phase:\t\t"); SerialASC.println(tickle_phase);
 }
 
 uint8_t dutyCycleToAnalog(double duty_cycle)
@@ -384,8 +390,8 @@ bool Segment::getRecord()
 
 void Segment::print()
 {
-  SerialASC.print("Duration: "); SerialASC.println(duration);
-  SerialASC.print("Frequency steps: "); SerialASC.println(num_freq_steps);
+  SerialASC.print("Duration:\t\t"); SerialASC.println(duration);
+  SerialASC.print("Frequency steps:\t"); SerialASC.println(num_freq_steps);
   for(uint8_t i = 0; i < num_outputs; i++)
   {
     if(output_list[i] != NULL)
@@ -396,7 +402,6 @@ void Segment::print()
     {
       SerialASC.println("None");
     }
-    SerialASC.println("---------");
   }
 }
 
@@ -556,10 +561,10 @@ void ScanFunction::print()
 {
   for(uint8_t i = 0; i < current_size; i++)
   {
-    SerialASC.println("---------");
-    SerialASC.print("Segment: "); SerialASC.println(i + 1);
-    SerialASC.println("---------");
+    SerialASC.println("--------------------------------------------------");
+    SerialASC.print("Segment:\t\t"); SerialASC.println(i + 1);
     segment_list[i]->print();
+    SerialASC.println("--------------------------------------------------");
   }
 }
 
@@ -579,22 +584,13 @@ void ScanFunction::run()
     segment_list[i]->setupSegment();
     if(segment_list[i]->getRecord())
     {
-//      data_acquire = true;
-//      SerialASC.write(1);
       InterruptCore1();
-//      Fast_digitalWrite(42, 1);
     }
     previous_millis = millis();
     while(millis() - previous_millis <= segment_list[i]->getDuration())
     {
       segment_list[i]->run();
     }
-//    data_acquire = false;
-//    if(segment_list[i]->getRecord())
-//    {
-//      Fast_digitalWrite(42, 0);
-//      SerialASC.write(0);
-//    }
   }
 }
 
@@ -704,76 +700,33 @@ void loop()
 /* CPU1 Uninitialised Data */
 StartOfUninitialised_CPU1_Variables
 /* Put your CPU1 fast access variables that have no initial values here e.g. uint32 CPU1_var; */
-//uint32_t data_length_points;
-//uint16_t data;
-//byte data_bytes[2];
-//unsigned long start_time;
-//bool start_signal;
-//bool end_signal;
 uint32_t record_duration;
 EndOfUninitialised_CPU1_Variables
 
 /* CPU1 Initialised Data */
 StartOfInitialised_CPU1_Variables
 /* Put your CPU1 fast access variables that have an initial value here e.g. uint32 CPU1_var_init = 1; */
-//const byte end_byte[4] = {'s', 't', 'o', 'p'};
 EndOfInitialised_CPU1_Variables
 
 void setup1() {
   // put your setup code for core 1 here, to run once:
-//  pinMode(A0, INPUT);
-//  analogReadResolution(14);
-//  Fast_digitalWrite(42, 1);
   pinMode(13, OUTPUT);
   digitalWrite(13, LOW);
 }
 
 
 void loop1() {
-  // put your main code for core 1 here, to run repeatedly:
-//  start_time = micros();
-//  start_signal = true;
-//  while(data_acquire)
-//  {
-//    if(start_signal)
-//    {
-//      SerialASC.println("$");
-//      start_signal = false;
-//    }
-//    if(!end_signal)
-//    {
-//      end_signal = true;
-//    }
-//    data = ReadAD0();
-//    SerialASC.write(highByte(data));
-//    SerialASC.write(lowByte(data));
-//  }
-//  if(end_signal)
-//  {
-//    SerialASC.println("#");
-////    SerialASC.write(end_byte, 4);
-//    end_signal = false;
-//  }
+
+  
 }
 
 void StartDataAcquisition()
 {
   uint32_t start_time = micros();
-//  SerialASC.write(1);
   Fast_digitalWrite(13, 1);
-  while(micros() - start_time < record_duration)
-  {
-  }
+  while(micros() - start_time < record_duration);
   Fast_digitalWrite(13, 0);
   SerialASC.write(0);
-//  SerialASC.println('#');
-//  SerialASC.println(data_length_points);
-//  for(uint32_t i = 0; i < data_length_points; i++)
-//  {
-//    data = micros() - start_time;
-//    SerialASC.write(highByte(data));
-//    SerialASC.write(lowByte(data));
-//  }
 }
 
 
@@ -821,8 +774,6 @@ void downloadScan()
       if(scan_function.getSegmentRecord(i))
       {
         record_duration = scan_function.getSegmentDuration(i) * 1000;
-//        data_length_millis = scan_function.getSegmentDuration(i);
-//        data_length_points = data_point_per_millis * data_length_millis;
       }
     }
     SerialASC.println("Download successful");
@@ -846,11 +797,9 @@ void uploadScan()
 void runScan()
 {
 //  SerialASC.println("Running scan function");
-//  SerialASC.println(data_length_points);
   char choice = ' ';
   while(choice != 'S')
   {
-//    InterruptCore1();
     scan_function.run();
     if(SerialASC.available())
     {

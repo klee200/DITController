@@ -59,7 +59,7 @@ class DataThread(QThread):
                     while self.dataPort.in_waiting:
                         self.dataString[self.n] += self.dataPort.read(self.dataPort.in_waiting)
                     if self.dataPlotTrigger:
-                        self.updateSignal.emit(self.dataString[self.n])
+                        self.updateSignal.emit(self.dataString[self.n].strip(b'stop'))
                     self.n = (self.n + 1) % self.maxNumData
                     self.dataString[self.n] = b''
                     self.dataPort.reset_input_buffer()
