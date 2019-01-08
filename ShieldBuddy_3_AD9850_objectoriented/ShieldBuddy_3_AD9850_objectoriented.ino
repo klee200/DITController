@@ -65,19 +65,19 @@ Output::Output(uint8_t output_index, JsonObject& parameters, uint32_t num_freque
     tickle_phase = 0;
   }
   const char* tickle = parameters["Tickle"];
-  if(strcmp(tickle, "Drive / 2") == 0)
+  if(strcmp(tickle, "Div / 2") == 0)
   {
     tickle_div = 2;
   }
-  else if(strcmp(tickle, "Drive / 4") == 0)
+  else if(strcmp(tickle, "Div / 4") == 0)
   {
     tickle_div = 4;
   }
-  else if(strcmp(tickle, "Drive / 8") == 0)
+  else if(strcmp(tickle, "Div / 8") == 0)
   {
     tickle_div = 8;
   }
-  else if(strcmp(tickle, "Drive / 16") == 0)
+  else if(strcmp(tickle, "Div / 16") == 0)
   {
     tickle_div = 16;
   }

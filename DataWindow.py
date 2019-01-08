@@ -167,7 +167,6 @@ class DataPlot(Plot):
             if len(self.x) < len(self.y):
                 self.x = range(len(self.y))
             self.plot(self.x[0:len(self.y)], self.y, clear=True)
-            print(len(self.y))
         self.updated.emit(str(len(self.data)))
         self.dataPlotTrigger = True
         
