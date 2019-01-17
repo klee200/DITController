@@ -34,12 +34,12 @@ class Output
     void updateDutyCycle();
     void updateTickle();
     void chooseSPIOutput();
-    void chooseUpdateOutput();
+//    void chooseUpdateOutput();
     uint32_t nextFrequency();
     void resetFrequency();
     void updateFrequency(uint32_t frequency);
-    void run();
-    void stop();
+//    void run();
+//    void stop();
 };
 
 Output::Output(uint8_t output_index, JsonObject& parameters, uint32_t num_frequency_steps)
@@ -235,24 +235,24 @@ void Output::chooseSPIOutput()
   }
 }
 
-void Output::chooseUpdateOutput()
-{
-  switch(output_number)
-  {
-    case 1:
-      Fast_digitalWrite(9, HIGH);
-      Fast_digitalWrite(9, LOW);
-      break;
-    case 2:
-      Fast_digitalWrite(7, HIGH);
-      Fast_digitalWrite(7, LOW);
-      break;
-    case 3:
-      Fast_digitalWrite(5, HIGH);
-      Fast_digitalWrite(5, LOW);
-      break;
-  }
-}
+//void Output::chooseUpdateOutput()
+//{
+//  switch(output_number)
+//  {
+//    case 1:
+//      Fast_digitalWrite(9, HIGH);
+//      Fast_digitalWrite(9, LOW);
+//      break;
+//    case 2:
+//      Fast_digitalWrite(7, HIGH);
+//      Fast_digitalWrite(7, LOW);
+//      break;
+//    case 3:
+//      Fast_digitalWrite(5, HIGH);
+//      Fast_digitalWrite(5, LOW);
+//      break;
+//  }
+//}
 
 void Output::resetFrequency()
 {
@@ -286,24 +286,18 @@ void Output::updateFrequency(uint32_t del_phase)
     Fast_digitalWrite(62, HIGH);
     Fast_digitalWrite(62, LOW);
   }
-//  for(uint8_t i = 0; i < 4; i++)
-//  {
-//    SPI.transfer(del_phase & 0xFF);
-//    del_phase>>=8;
-//  }
-//  SPI.transfer(0x00);
-  chooseUpdateOutput();
+//  chooseUpdateOutput();
 }
 
-void Output::run()
-{
-  updateFrequency(nextFrequency());
-}
+//void Output::run()
+//{
+//  updateFrequency(nextFrequency());
+//}
 
-void Output::stop()
-{
-  updateFrequency(0);
-}
+//void Output::stop()
+//{
+//  updateFrequency(0);
+//}
 
 // Scan function segment class
 class Segment
@@ -328,6 +322,7 @@ class Segment
     void setupSegment();
     void updateAnalogValue(uint8_t analog_output, double analog_volt);
     void updateAnalog();
+    void updateOutputs();
     void run();
     void stop();
 };
@@ -417,7 +412,6 @@ void Segment::setupSegment()
   {
     updateAnalogValue(i, analog[i]);
   }
-  updateAnalog();
   // Duty cycles
   for(uint8_t i = 0; i < num_outputs; i++)
   {
@@ -441,6 +435,9 @@ void Segment::setupSegment()
   Fast_digitalWrite(51A, digital[9]);
   Fast_digitalWrite(52A, digital[10]);
   Fast_digitalWrite(53A, digital[11]);
+  // Update together
+  updateAnalog();
+  updateOutputs();
 }
 
 void Segment::updateAnalogValue(uint8_t analog_output, double analog_volt)
@@ -478,12 +475,23 @@ uint16_t voltToAnalog(double volt)
   return analog_value;
 }
 
+void Segment::updateOutputs()
+{
+  Fast_digitalWrite(9, HIGH);
+  Fast_digitalWrite(7, HIGH);
+  Fast_digitalWrite(5, HIGH);
+  Fast_digitalWrite(9, LOW);
+  Fast_digitalWrite(7, LOW);
+  Fast_digitalWrite(5, LOW);
+}
+
 void Segment::run()
 {
   for(uint8_t i = 0; i < num_outputs; i++)
   {
-    output_list[i]->run();
+    output_list[i]->updateFrequency(output_list[i]->nextFrequency());
   }
+  updateOutputs();
 }
 
 void Segment::stop()
@@ -499,8 +507,9 @@ void Segment::stop()
   updateAnalog();
   for(uint8_t i = 0; i < num_outputs; i++)
   {
-    output_list[i]->stop();
+    output_list[i]->updateFrequency(0);
   }
+  updateOutputs();
 }
 
 // Scan function class - container for the scan function segment objects
