@@ -38,6 +38,7 @@ class Output
     uint32_t nextFrequency();
     void resetFrequency();
     void updateFrequency(uint32_t frequency);
+    double getFrequency();
 //    void run();
 //    void stop();
 };
@@ -289,6 +290,11 @@ void Output::updateFrequency(uint32_t del_phase)
 //  chooseUpdateOutput();
 }
 
+double Output::getFrequency()
+{
+  return current_frequency;
+}
+
 //void Output::run()
 //{
 //  updateFrequency(nextFrequency());
@@ -309,7 +315,7 @@ class Segment
     uint32_t duration;
     bool record;
     uint32_t num_freq_steps;
-    const static uint8_t micros_per_step = 23;
+    const static uint8_t micros_per_step = 19;
     Output* output_list[num_outputs];
     uint8_t digital[12];
     double analog[8];
@@ -323,6 +329,7 @@ class Segment
     void updateAnalogValue(uint8_t analog_output, double analog_volt);
     void updateAnalog();
     void updateOutputs();
+    Output* getOutput(uint8_t output);
     void run();
     void stop();
 };
@@ -485,6 +492,11 @@ void Segment::updateOutputs()
   Fast_digitalWrite(5, LOW);
 }
 
+Output* Segment::getOutput(uint8_t output)
+{
+  return output_list[output];
+}
+
 void Segment::run()
 {
   for(uint8_t i = 0; i < num_outputs; i++)
@@ -593,12 +605,18 @@ void ScanFunction::run()
     segment_list[i]->setupSegment();
     if(segment_list[i]->getRecord())
     {
-      InterruptCore1();
+//      InterruptCore1();
+      Fast_digitalWrite(13, 1);
     }
     previous_millis = millis();
     while(millis() - previous_millis <= segment_list[i]->getDuration())
     {
       segment_list[i]->run();
+    }
+    if(segment_list[i]->getRecord())
+    {
+      Fast_digitalWrite(13, 0);
+      SerialASC.println(segment_list[i]->getOutput(0)->getFrequency());
     }
   }
 }
@@ -673,7 +691,7 @@ void setup() {
   Fast_digitalWrite(4, LOW);
   Fast_digitalWrite(5, HIGH);
   Fast_digitalWrite(5, LOW);
-  CreateCore1Interrupt(StartDataAcquisition);
+//  CreateCore1Interrupt(StartDataAcquisition);
   
   SerialASC.println("Setup complete");
 }
@@ -685,6 +703,7 @@ void loop()
   if(SerialASC.available())
   {
     char choice = SerialASC.read();
+    SerialASC.println(choice);
     switch(choice)
     {
       case 'D':
@@ -729,14 +748,14 @@ void loop1() {
   
 }
 
-void StartDataAcquisition()
-{
-  uint32_t start_time = micros();
-  Fast_digitalWrite(13, 1);
-  while(micros() - start_time < record_duration);
-  Fast_digitalWrite(13, 0);
-  SerialASC.write(0);
-}
+//void StartDataAcquisition()
+//{
+//  uint32_t start_time = micros();
+//  Fast_digitalWrite(13, 1);
+//  while(micros() - start_time < record_duration);
+//  Fast_digitalWrite(13, 0);
+//  SerialASC.write(0);
+//}
 
 
 

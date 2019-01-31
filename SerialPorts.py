@@ -55,6 +55,7 @@ class DataThread(QThread):
                 if self.dataPort.in_waiting:
                     self.dataString[self.n] += self.dataPort.read(self.dataPort.in_waiting)
                 if self.controlPort.in_waiting:
+                    print(self.controlPort.read(self.controlPort.in_waiting))
                     self.controlPort.reset_input_buffer()
                     while self.dataPort.in_waiting:
                         self.dataString[self.n] += self.dataPort.read(self.dataPort.in_waiting)
