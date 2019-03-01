@@ -616,7 +616,7 @@ void ScanFunction::run()
     if(segment_list[i]->getRecord())
     {
       Fast_digitalWrite(13, 0);
-      SerialASC.println(segment_list[i]->getOutput(0)->getFrequency());
+      SerialASC.print(segment_list[i]->getOutput(1)->getFrequency());
     }
   }
 }
@@ -647,8 +647,6 @@ const uint32_t SERIAL_RATE = 2000000;
 const uint16_t SERIAL_TIMEOUT = 5000;
 const uint16_t MAX_INPUT_LENGTH = 10000;
 ScanFunction scan_function;
-uint32_t data_point_per_millis = 90;
-uint32_t data_length_millis;
 
 
 /*** Core 0 ***/
@@ -703,7 +701,6 @@ void loop()
   if(SerialASC.available())
   {
     char choice = SerialASC.read();
-    SerialASC.println(choice);
     switch(choice)
     {
       case 'D':
@@ -728,7 +725,7 @@ void loop()
 /* CPU1 Uninitialised Data */
 StartOfUninitialised_CPU1_Variables
 /* Put your CPU1 fast access variables that have no initial values here e.g. uint32 CPU1_var; */
-uint32_t record_duration;
+//uint32_t record_duration;
 EndOfUninitialised_CPU1_Variables
 
 /* CPU1 Initialised Data */
@@ -790,26 +787,47 @@ void downloadScan()
 {
   SerialASC.println("Download initiated");
   scan_function.clear();
-  StaticJsonBuffer<MAX_INPUT_LENGTH> json_buffer;
-  JsonArray& scan_list = json_buffer.parseArray(SerialASC);
-  if(scan_list.success())
+//  StaticJsonBuffer<MAX_INPUT_LENGTH> json_buffer;
+//  JsonArray& scan_list = json_buffer.parseArray(SerialASC);
+//  if(scan_list.success())
+//  {
+//    for(uint8_t i = 0; i < scan_list.size(); i++)
+//    {
+//      JsonObject& segment = scan_list[i];
+//      scan_function.addSegment(segment);
+//      if(scan_function.getSegmentRecord(i))
+//      {
+//        record_duration = scan_function.getSegmentDuration(i) * 1000;
+//      }
+//    }
+//    SerialASC.println("Download successful");
+//  }
+//  else
+//  {
+//    SerialASC.println("Download failed");
+//  }
+  SerialASC.read(); // Read opening '[' from json array before parsing objects
+  char next_char = ','; // Comma separates json objects in array
+  while(next_char == ',')
   {
-    data_length_millis = 0;
-    for(uint8_t i = 0; i < scan_list.size(); i++)
+    StaticJsonBuffer<MAX_INPUT_LENGTH> json_buffer;
+    JsonObject& scan_segment = json_buffer.parseObject(SerialASC);
+    if(scan_segment.success())
     {
-      JsonObject& segment = scan_list[i];
-      scan_function.addSegment(segment);
-      if(scan_function.getSegmentRecord(i))
+      scan_function.addSegment(scan_segment);
+      if(SerialASC.available())
       {
-        record_duration = scan_function.getSegmentDuration(i) * 1000;
+        next_char = SerialASC.read(); // Check if another comma - signals there is another segment to read
       }
     }
-    SerialASC.println("Download successful");
+    else
+    {
+      SerialASC.println("Download failed");
+      next_char = '0';  // End while loop if bad segment
+    }
+    if(next_char == ']'){SerialASC.println("Download successful");}
   }
-  else
-  {
-    SerialASC.println("Download failed");
-  }
+  while(SerialASC.available()){SerialASC.read();} // Clear input buffer
   SerialASC.println("Download finished");
   return;
 }

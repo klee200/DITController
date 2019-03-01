@@ -17,7 +17,7 @@ class ControlPort(Serial):
         readInput = []
         try:
             readInput.append(self.readline().decode('ascii').strip())
-            while readInput[-1] != stopString:
+            while readInput[-1] != stopString and readInput[-1] != "":
                 readInput.append(self.readline().decode('ascii').strip())
         except SerialException:
             readInput.append("Serial read failed")
