@@ -168,18 +168,22 @@ void Output::updateTickle()
       switch(tickle_div)
       {
         case 2:
+          Fast_digitalWrite(34, LOW);
           Fast_digitalWrite(28, LOW);
           Fast_digitalWrite(29, LOW);
           break;
         case 4:
+          Fast_digitalWrite(34, LOW);
           Fast_digitalWrite(28, HIGH);
           Fast_digitalWrite(29, LOW);
           break;
         case 8:
+          Fast_digitalWrite(34, LOW);
           Fast_digitalWrite(28, LOW);
           Fast_digitalWrite(29, HIGH);
           break;
         case 16:
+          Fast_digitalWrite(34, LOW);
           Fast_digitalWrite(28, HIGH);
           Fast_digitalWrite(29, HIGH);
           break;
