@@ -14,6 +14,8 @@ class DataWindow(QMainWindow):
         self.dataPlot = DataPlot(dataPlotTrigger)
         self.displayToolWidget = DisplayToolWidget()
         self.displayPlot = DisplayPlot()
+        self.integralToolWidget = IntegralToolWidget()
+        self.integralPlot = IntegralPlot()
         
         self.build_window()
         
@@ -30,16 +32,21 @@ class DataWindow(QMainWindow):
         self.centralWidget().layout().addWidget(self.dataPlot, 1, 0)
         self.centralWidget().layout().addWidget(self.displayToolWidget, 2, 0)
         self.centralWidget().layout().addWidget(self.displayPlot, 3, 0)
+        self.centralWidget().layout().addWidget(self.integralToolWidget, 4, 0)
+        self.centralWidget().layout().addWidget(self.integralPlot, 5, 0)
         
     def signal_handler(self):
         self.dataToolWidget.saveBtn.clicked.connect(self.dataPlot.save_data)
         self.dataToolWidget.averagesBox.textChanged.connect(self.dataPlot.set_averages)
         self.dataPlot.updated.connect(self.dataToolWidget.countBox.setText)
+        self.dataPlot.updated2.connect(self.integralPlot.update)
         self.dataToolWidget.calibrateBtn.clicked.connect(lambda: self.dataPlot.calibrate(self.dataToolWidget.constBox.text(), self.dataToolWidget.startFreqBox.text(), self.dataToolWidget.endFreqBox.text()))
         
         self.displayToolWidget.openBtn.clicked.connect(self.displayPlot.open_data)
         self.displayToolWidget.saveBtn.clicked.connect(self.displayPlot.save_data)
         self.displayToolWidget.calibrateBtn.clicked.connect(lambda: self.displayPlot.calibrate(self.displayToolWidget.constBox.text(), self.displayToolWidget.startFreqBox.text(), self.displayToolWidget.endFreqBox.text()))
+        
+        self.integralToolWidget.clearBtn.clicked.connect(self.integralPlot.clr)
         
     def closeEvent(self, event):
         event.ignore()
@@ -101,6 +108,18 @@ class DisplayToolWidget(QWidget):
         self.layout().addWidget(self.constBox, 0, 6)
         self.calibrateBtn = QPushButton("Calibrate")
         self.layout().addWidget(self.calibrateBtn, 0, 7)
+        
+class IntegralToolWidget(QWidget):
+    def __init__(self):
+        super(IntegralToolWidget, self).__init__()
+        
+        self.build_widget()
+        
+    def build_widget(self):
+        self.setLayout(QGridLayout())
+        
+        self.clearBtn = QPushButton("Clear")
+        self.layout().addWidget(self.clearBtn, 0, 0)
        
 class Plot(pg.PlotWidget):
     def __init__(self):
@@ -148,6 +167,7 @@ class Plot(pg.PlotWidget):
 
 class DataPlot(Plot):
     updated = pyqtSignal(object)
+    updated2 = pyqtSignal(object)
     def __init__(self, dataPlotTrigger):
         super(DataPlot, self).__init__()
         
@@ -166,10 +186,11 @@ class DataPlot(Plot):
             self.data = self.data[-self.numAverages:]
         self.y = [sum(d) / len(self.data) for d in zip(*self.data)]
         if len(self.y) > 0:
-            if len(self.x) < len(self.y):
+            if len(self.x) != len(self.y):
                 self.x = range(len(self.y))
-            self.plot(self.x[0:len(self.y)], self.y, clear=True)
+            self.plot(self.x, self.y, clear=True)
         self.updated.emit(str(len(self.data)))
+        self.updated2.emit(sum(self.data[-1]))
         self.dataPlotTrigger = True
         
     def set_averages(self, value):
@@ -201,3 +222,25 @@ class DisplayPlot(Plot):
             self.plot(self.x, self.y, clear=True)
         except:
             None
+
+class IntegralPlot(Plot):
+    def __init__(self):
+        super(IntegralPlot, self).__init__()
+        
+        self.data = []
+        
+        self.build_widget()
+        
+    def build_widget(self):
+        super(IntegralPlot, self).build_widget()
+        self.setLabel('bottom', text='Time')
+        
+    def update(self, point):
+        self.data.append(point)
+        self.x = range(len(self.data))
+        self.y = self.data
+        if len(self.y) > 1:
+            self.plot(self.x, self.y, clear=True)
+            
+    def clr(self):
+        self.data = []
