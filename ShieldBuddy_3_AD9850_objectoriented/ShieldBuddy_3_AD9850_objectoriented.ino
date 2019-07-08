@@ -556,15 +556,15 @@ ScanFunction::ScanFunction()
 
 void ScanFunction::addSegment(JsonObject& segment)
 {
-  if(current_size < max_size)
-  {
+//  if(current_size < max_size)
+//  {
     segment_list[current_size] = new Segment(segment);
     current_size++;
-  }
-  else
-  {
-    SerialASC.println("Too many segments");
-  }
+//  }
+//  else
+//  {
+//    SerialASC.println("Too many segments");
+//  }
 }
 
 uint32_t ScanFunction::getSegmentDuration(uint8_t segment_index)
