@@ -11,6 +11,7 @@ class ConnectionWindow(QDialog):
         
         self.controlPort = ControlPort()
         self.dataPort = DataPort(self.controlPort)
+        self.dataThread = DataThread(self.controlPort, self.dataPort)
         
         self.build_window()
 
@@ -43,12 +44,15 @@ class ConnectionWindow(QDialog):
         try:
             self.controlPort.port = self.controlBox.text()
             self.controlPort.open()
+            self.dataThread.controlPortAccess = True
+            self.dataThread.start()
             self.textWidget.appendPlainText("Controller connected")
         except SerialException:
             self.textWidget.appendPlainText("No serial port found")
 
     def disconnect_control(self):
         try:
+            self.dataThread.controlPortAccess = False
             self.controlPort.close()
             self.textWidget.appendPlainText("Controller disconnected")
         except SerialException:
@@ -58,13 +62,15 @@ class ConnectionWindow(QDialog):
         try:
             self.dataPort.port = self.dataBox.text()
             self.dataPort.open()
-            self.dataPort.dataThread.start()
+            self.dataThread.dataPortAccess = True
+            # self.dataPort.dataThread.start()
             self.textWidget.appendPlainText("Data serial connected")
         except SerialException:
             self.textWidget.appendPlainText("No serial port found")
         
     def disconnect_data(self):
         try:
+            self.dataThread.dataPortAccess = False
             self.dataPort.close()
             self.textWidget.appendPlainText("Data serial disconnected")
         except SerialException:

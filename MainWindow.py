@@ -21,7 +21,7 @@ class MainWindow(QMainWindow):
         self.addRemoveWindow = AddRemoveSegmentWindow()
         self.calcWindow = CalculatorWindow()
         
-        self.dataWindow = DataWindow(self.connectWindow.dataPort.dataThread.dataPlotTrigger)
+        self.dataWindow = DataWindow(self.connectWindow.dataThread.dataPlotTrigger)
         
         self.build_menu()
         self.build_window()
@@ -69,23 +69,23 @@ class MainWindow(QMainWindow):
             scanData = json.dumps(self.scanWidget.scanFunction)
             self.connectWindow.controlPort.serial_write('D')
             self.connectWindow.controlPort.serial_write(scanData)
-            readInputList = self.connectWindow.controlPort.serial_read('Download finished')
-            for readInput in readInputList:
-                self.textWidget.appendPlainText(readInput)
+            # readInputList = self.connectWindow.controlPort.serial_read('Download finished')
+            # for readInput in readInputList:
+                # self.textWidget.appendPlainText(readInput)
         except SerialException:
             self.textWidget.appendPlainText("No serial port found")
 
     def upload_scan(self):
         try:
             self.connectWindow.controlPort.serial_write('U')
-            readInputList = self.connectWindow.controlPort.serial_read('Upload finished')
-            for readInput in readInputList:
-                self.textWidget.appendPlainText(readInput)
+            # readInputList = self.connectWindow.controlPort.serial_read('Upload finished')
+            # for readInput in readInputList:
+                # self.textWidget.appendPlainText(readInput)
         except SerialException:
             self.textWidget.appendPlainText("No serial port found")
 
     def run_scan(self):
-        self.connectWindow.dataPort.dataThread.controlPortAccess = True
+        # self.connectWindow.dataPort.dataThread.controlPortAccess = True
         try:
             self.connectWindow.controlPort.serial_write('R')
             self.btnWidget.downloadBtn.setEnabled(False)
@@ -96,7 +96,7 @@ class MainWindow(QMainWindow):
             self.textWidget.appendPlainText("No serial port found")
 
     def stop_scan(self):
-        self.connectWindow.dataPort.dataThread.controlPortAccess = False
+        # self.connectWindow.dataPort.dataThread.controlPortAccess = False
         try:
             sleep(1)
             self.connectWindow.controlPort.serial_write('S')
