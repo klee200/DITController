@@ -99,14 +99,18 @@ class ScanArea(QScrollArea):
         
         self.headerView = ParameterView()
         self.headerView.setupModel(HeaderModel(scanFunction, self.headerLabels, self.headerTypes))
+        self.headerView.model().dataChanged.connect(self.headerView.viewport().update)
         self.outputViewList = []
         for i in range(self.OUTPUTS):
             self.outputViewList.append(ParameterView())
             self.outputViewList[i].setupModel(OutputModel(scanFunction, i, self.outputLabels, self.outputTypes))
+            self.headerView.model().dataChanged.connect(self.outputViewList[i].viewport().update)
         self.analogView = ParameterView()
         self.analogView.setupModel(ListParsModel(scanFunction, "Analog", self.analogLabels, self.analogTypes))
+        self.headerView.model().dataChanged.connect(self.analogView.viewport().update)
         self.digitalView = ParameterView()
         self.digitalView.setupModel(ListParsModel(scanFunction, "Digital", self.digitalLabels, self.digitalTypes))
+        self.headerView.model().dataChanged.connect(self.digitalView.viewport().update)
         
         self.widget().layout().addWidget(self.headerView)
         for i in range(self.OUTPUTS):
@@ -136,6 +140,13 @@ class ScanArea(QScrollArea):
             return True
         else:
             return False
+            
+    def mousePressEvent(self, event):
+        self.headerView.clearSelection()
+        for i in range(self.OUTPUTS):
+            self.outputViewList[i].clearSelection()
+        self.analogView.clearSelection()
+        self.digitalView.clearSelection()
         
 class ParameterView(QTableView):
     def __init__(self):
@@ -178,15 +189,18 @@ class HeaderModel(ParameterModel):
         super(HeaderModel, self).__init__(scanFunction, labels, types)
                                 
     def data(self, index, role):
-        if role == Qt.DisplayRole:
+        if role in [Qt.DisplayRole, Qt.EditRole]:
             return str(self.scanFunction[index.column()][self.labels[index.row()]])
         if role == Qt.BackgroundRole:
-            if self.scanFunction[index.column()][self.labels[index.row()]] == "False":
-                return QBrush(QColor('red'))
-            elif self.scanFunction[index.column()][self.labels[index.row()]] == "True":
-                return QBrush(QColor('green'))
+            if self.scanFunction[index.column()]["Active"] == "False":
+                return QBrush(QColor('grey'))
             else:
-                return QBrush(QColor('white'))
+                if self.scanFunction[index.column()][self.labels[index.row()]] == "False":
+                    return QBrush(QColor('red'))
+                elif self.scanFunction[index.column()][self.labels[index.row()]] == "True":
+                    return QBrush(QColor('green'))
+                else:
+                    return QBrush(QColor('white'))
                     
     def setData(self, index, value, role):
         if role == Qt.EditRole:
@@ -225,8 +239,13 @@ class OutputModel(ParameterModel):
         self.output = output
         
     def data(self, index, role):
-        if role == Qt.DisplayRole:
+        if role in [Qt.DisplayRole, Qt.EditRole]:
             return str(self.scanFunction[index.column()]["Outputs"][self.output][self.labels[index.row()]])
+        if role == Qt.BackgroundRole:
+            if self.scanFunction[index.column()]["Active"] == "False":
+                return QBrush(QColor('grey'))
+            else:
+                return QBrush(QColor('white'))
         if role == Qt.ToolTipRole:
             if self.labels[index.row()] == "Tickle":
                 return "Div / [value here] or Output 3"
@@ -264,15 +283,18 @@ class ListParsModel(ParameterModel):
         self.name = name
         
     def data(self, index, role):
-        if role == Qt.DisplayRole:
+        if role in [Qt.DisplayRole, Qt.EditRole]:
             return str(self.scanFunction[index.column()][self.name][index.row()])
         if role == Qt.BackgroundRole:
-            if self.scanFunction[index.column()][self.name][index.row()] == "False":
-                return QBrush(QColor('red'))
-            elif self.scanFunction[index.column()][self.name][index.row()] == "True":
-                return QBrush(QColor('green'))
+            if self.scanFunction[index.column()]["Active"] == "False":
+                return QBrush(QColor('grey'))
             else:
-                return QBrush(QColor('white'))
+                if self.scanFunction[index.column()][self.name][index.row()] == "False":
+                    return QBrush(QColor('red'))
+                elif self.scanFunction[index.column()][self.name][index.row()] == "True":
+                    return QBrush(QColor('green'))
+                else:
+                    return QBrush(QColor('white'))
         
     def setData(self, index, value, role):
         if role == Qt.EditRole:
