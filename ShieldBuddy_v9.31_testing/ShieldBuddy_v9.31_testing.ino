@@ -1,8 +1,8 @@
 #include<ArduinoJson.h>
 //#include<SPI.h>
-#include<Wire.h>
+//#include<Wire.h>
 #include<SoftwareWire.h>
-SoftwareWire Wire3(SDA1, SCL1, true, false);
+//SoftwareWire Wire3(SDA1, SCL1, true, false);
 SoftwareWire Wire2(21, 20, true, false);
 
 bool data_acquire = false;
@@ -22,6 +22,7 @@ class Output
     uint8_t tickle_div;
     double tickle_amplitude;
     uint8_t tickle_phase;
+    const static uint8_t COMP_DAC = 76;
     const static uint8_t MCP1 = 40;
     const static uint8_t MCP2 = 41;
     const static uint8_t MCP3 = 42;
@@ -38,7 +39,7 @@ class Output
     uint32_t nextFrequency();
     void resetFrequency();
     void updateFrequency(uint32_t frequency);
-    uint32_t getFrequency();
+    double getFrequency();
 //    void run();
 //    void stop();
 };
@@ -104,29 +105,34 @@ void Output::print()
   SerialASC.print("Tickle Phase:\t\t"); SerialASC.println(tickle_phase);
 }
 
-uint8_t dutyCycleToAnalog(double duty_cycle)
+uint16_t dutyCycleToAnalog(double duty_cycle)
 {
-  uint8_t analog_value = duty_cycle * 255 / 100;
+  uint16_t analog_value = duty_cycle * 65536 / 100;
   return analog_value;
 }
 
 void Output::updateDutyCycle()
 {
-  switch(output_number)
-  {
-    case 1:
-      Wire3.beginTransmission(MCP1);
-      break;
-    case 2:
-      Wire3.beginTransmission(MCP2);
-      break;
-    case 3:
-      Wire3.beginTransmission(MCP3);
-      break;
-  }
-  Wire3.write(wiper0);
-  Wire3.write(dutyCycleToAnalog(duty_cycle));
-  Wire3.endTransmission(false);
+  Wire2.beginTransmission(COMP_DAC);
+  Wire2.write((output_number - 1) * 2);
+  Wire2.write(highByte(dutyCycleToAnalog(duty_cycle)));
+  Wire2.write(lowByte(dutyCycleToAnalog(duty_cycle)));
+  Wire2.endTransmission();
+//  switch(output_number)
+//  {
+//    case 1:
+//      Wire3.beginTransmission(MCP1);
+//      break;
+//    case 2:
+//      Wire3.beginTransmission(MCP2);
+//      break;
+//    case 3:
+//      Wire3.beginTransmission(MCP3);
+//      break;
+//  }
+//  Wire3.write(wiper0);
+//  Wire3.write(dutyCycleToAnalog(duty_cycle));
+//  Wire3.endTransmission(false);
 }
 
 uint8_t amplitudeToAnalog(double tickle_amplitude)
@@ -137,107 +143,128 @@ uint8_t amplitudeToAnalog(double tickle_amplitude)
 
 void Output::updateTickle()
 {
-  switch(output_number)
-  {
-    case 1:
-      switch(tickle_div)
-      {
-        case 2:
-          Fast_digitalWrite(25, LOW);
-          Fast_digitalWrite(26, LOW);
-          break;
-        case 4:
-          Fast_digitalWrite(25, HIGH);
-          Fast_digitalWrite(26, LOW);
-          break;
-        case 8:
-          Fast_digitalWrite(25, LOW);
-          Fast_digitalWrite(26, HIGH);
-          break;
-        case 16:
-          Fast_digitalWrite(25, HIGH);
-          Fast_digitalWrite(26, HIGH);
-          break;
-        case 0:
-          Fast_digitalWrite(33, HIGH);
-          break;
-      }
-      Wire3.beginTransmission(MCP1);
-      break;
-    case 2:
-      switch(tickle_div)
-      {
-        case 2:
-          Fast_digitalWrite(34, LOW);
-          Fast_digitalWrite(28, LOW);
-          Fast_digitalWrite(29, LOW);
-          break;
-        case 4:
-          Fast_digitalWrite(34, LOW);
-          Fast_digitalWrite(28, HIGH);
-          Fast_digitalWrite(29, LOW);
-          break;
-        case 8:
-          Fast_digitalWrite(34, LOW);
-          Fast_digitalWrite(28, LOW);
-          Fast_digitalWrite(29, HIGH);
-          break;
-        case 16:
-          Fast_digitalWrite(34, LOW);
-          Fast_digitalWrite(28, HIGH);
-          Fast_digitalWrite(29, HIGH);
-          break;
-        case 0:
-          Fast_digitalWrite(34, HIGH);
-          break;
-      }
-      Wire3.beginTransmission(MCP2);
-      break;
-    case 3:
-      switch(tickle_div)
-      {
-        case 2:
-          Fast_digitalWrite(31, LOW);
-          Fast_digitalWrite(32, LOW);
-          break;
-        case 4:
-          Fast_digitalWrite(31, HIGH);
-          Fast_digitalWrite(32, LOW);
-          break;
-        case 8:
-          Fast_digitalWrite(31, LOW);
-          Fast_digitalWrite(32, HIGH);
-          break;
-        case 16:
-          Fast_digitalWrite(31, HIGH);
-          Fast_digitalWrite(32, HIGH);
-          break;
-      }
-      Wire3.beginTransmission(MCP3);
-      break;
-  }
-  Wire3.write(wiper1);
-  Wire3.write(amplitudeToAnalog(tickle_amplitude));
-  Wire3.endTransmission(false);
+//  switch(output_number)
+//  {
+//    case 1:
+//      switch(tickle_div)
+//      {
+//        case 2:
+//          Fast_digitalWrite(25, LOW);
+//          Fast_digitalWrite(26, LOW);
+//          break;
+//        case 4:
+//          Fast_digitalWrite(25, HIGH);
+//          Fast_digitalWrite(26, LOW);
+//          break;
+//        case 8:
+//          Fast_digitalWrite(25, LOW);
+//          Fast_digitalWrite(26, HIGH);
+//          break;
+//        case 16:
+//          Fast_digitalWrite(25, HIGH);
+//          Fast_digitalWrite(26, HIGH);
+//          break;
+//        case 0:
+//          Fast_digitalWrite(33, HIGH);
+//          break;
+//      }
+//      Wire3.beginTransmission(MCP1);
+//      break;
+//    case 2:
+//      switch(tickle_div)
+//      {
+//        case 2:
+//          Fast_digitalWrite(34, LOW);
+//          Fast_digitalWrite(28, LOW);
+//          Fast_digitalWrite(29, LOW);
+//          break;
+//        case 4:
+//          Fast_digitalWrite(34, LOW);
+//          Fast_digitalWrite(28, HIGH);
+//          Fast_digitalWrite(29, LOW);
+//          break;
+//        case 8:
+//          Fast_digitalWrite(34, LOW);
+//          Fast_digitalWrite(28, LOW);
+//          Fast_digitalWrite(29, HIGH);
+//          break;
+//        case 16:
+//          Fast_digitalWrite(34, LOW);
+//          Fast_digitalWrite(28, HIGH);
+//          Fast_digitalWrite(29, HIGH);
+//          break;
+//        case 0:
+//          Fast_digitalWrite(34, HIGH);
+//          break;
+//      }
+//      Wire3.beginTransmission(MCP2);
+//      break;
+//    case 3:
+//      switch(tickle_div)
+//      {
+//        case 2:
+//          Fast_digitalWrite(31, LOW);
+//          Fast_digitalWrite(32, LOW);
+//          break;
+//        case 4:
+//          Fast_digitalWrite(31, HIGH);
+//          Fast_digitalWrite(32, LOW);
+//          break;
+//        case 8:
+//          Fast_digitalWrite(31, LOW);
+//          Fast_digitalWrite(32, HIGH);
+//          break;
+//        case 16:
+//          Fast_digitalWrite(31, HIGH);
+//          Fast_digitalWrite(32, HIGH);
+//          break;
+//      }
+//      Wire3.beginTransmission(MCP3);
+//      break;
+//  }
+//  Wire3.write(wiper1);
+//  Wire3.write(amplitudeToAnalog(tickle_amplitude));
+//  Wire3.endTransmission(false);
+//  switch(output_number)
+//  {
+//    case 1:
+//      if(tickle_phase == 0)
+//      {
+//        Fast_digitalWrite(4, HIGH);
+//      }
+//      else
+//      {
+//        Fast_digitalWrite(4, LOW);
+//      }
+//      Wire.beginTransmission(MCP1);
+//      Wire.write(wiper0);
+//      Wire.write(amplitudeToAnalog(tickle_amplitude));
+//      Wire.endTransmission(false);
+//      break;
+//  }
 }
 
 void Output::chooseSPIOutput()
 {
-  switch(output_number)
-  {
-    case 1:
-      Fast_digitalWrite(22, LOW);
-      Fast_digitalWrite(23, LOW);
-      break;
-    case 2:
-      Fast_digitalWrite(22, HIGH);
-      Fast_digitalWrite(23, LOW);
-      break;
-    case 3:
-      Fast_digitalWrite(22, LOW);
-      Fast_digitalWrite(23, HIGH);
-      break;
-  }
+  uint8_t output_index = output_number - 1;
+  Fast_digitalWrite(8, output_index & 1);
+  output_index >>= 1;
+  Fast_digitalWrite(9, output_index & 1);
+//  switch(output_number)
+//  {
+//    case 1:
+//      Fast_digitalWrite(22, LOW);
+//      Fast_digitalWrite(23, LOW);
+//      break;
+//    case 2:
+//      Fast_digitalWrite(22, HIGH);
+//      Fast_digitalWrite(23, LOW);
+//      break;
+//    case 3:
+//      Fast_digitalWrite(22, LOW);
+//      Fast_digitalWrite(23, HIGH);
+//      break;
+//  }
 }
 
 //void Output::chooseUpdateOutput()
@@ -280,23 +307,23 @@ void Output::updateFrequency(uint32_t del_phase)
   chooseSPIOutput();
   for(uint8_t i = 0; i < 32; i++)
   {
-    Fast_digitalWrite(63, del_phase & 1)
-    Fast_digitalWrite(62, HIGH);
-    Fast_digitalWrite(62, LOW);
+    Fast_digitalWrite(11, del_phase & 1)
+    Fast_digitalWrite(13, HIGH);
+    Fast_digitalWrite(13, LOW);
     del_phase >>= 1;
   }
   for(uint8_t i = 0; i < 8; i++)
   {
-    Fast_digitalWrite(63, 0);
-    Fast_digitalWrite(62, HIGH);
-    Fast_digitalWrite(62, LOW);
+    Fast_digitalWrite(11, 0);
+    Fast_digitalWrite(13, HIGH);
+    Fast_digitalWrite(13, LOW);
   }
 //  chooseUpdateOutput();
 }
 
-uint32_t Output::getFrequency()
+double Output::getFrequency()
 {
-  return (uint32_t)current_frequency;
+  return current_frequency;
 }
 
 //void Output::run()
@@ -317,7 +344,6 @@ class Segment
     const static int DAC1 = 76;
     const static int DAC2 = 77;
     uint32_t duration;
-    bool active;
     bool record;
     uint32_t num_freq_steps;
     const static uint8_t micros_per_step = 19;
@@ -328,12 +354,11 @@ class Segment
     Segment(JsonObject& segment);
     ~Segment();
     uint32_t getDuration();
-    bool getActive();
     bool getRecord();
     void print();
     void setupSegment();
     void updateAnalogValue(uint8_t analog_output, double analog_volt);
-    void updateAnalog();
+    void updateDAC();
     void updateOutputs();
     Output* getOutput(uint8_t output);
     void run();
@@ -343,14 +368,6 @@ class Segment
 Segment::Segment(JsonObject& segment)
 {
   duration = segment["Duration"];
-  if(segment["Active"] == "True")
-  {
-    active = true;
-  }
-  else
-  {
-    active = false;
-  }
   if(segment["Record"] == "True")
   {
     record = true;
@@ -399,11 +416,6 @@ uint32_t Segment::getDuration()
   return duration;
 }
 
-bool Segment::getActive()
-{
-  return active;
-}
-
 bool Segment::getRecord()
 {
   return record;
@@ -432,13 +444,12 @@ void Segment::setupSegment()
   for(uint8_t i = 0; i < num_outputs; i++)
   {
     output_list[i]->resetFrequency();
-    output_list[i]->updateFrequency(output_list[i]->nextFrequency());
   }
-  // Analog
-  for(uint8_t i = 0; i < 8; i++)
-  {
-    updateAnalogValue(i, analog[i]);
-  }
+//  // Analog
+//  for(uint8_t i = 0; i < 8; i++)
+//  {
+//    updateAnalogValue(i, analog[i]);
+//  }
   // Duty cycles
   for(uint8_t i = 0; i < num_outputs; i++)
   {
@@ -449,51 +460,51 @@ void Segment::setupSegment()
   {
     output_list[i]->updateTickle();
   }
-  // Digital
-  Fast_digitalWrite(42, digital[0]);
-  Fast_digitalWrite(43, digital[1]);
-  Fast_digitalWrite(44, digital[2]);
-  Fast_digitalWrite(45, digital[3]);
-  Fast_digitalWrite(46, digital[4]);
-  Fast_digitalWrite(47, digital[5]);
-  Fast_digitalWrite(48, digital[6]);
-  Fast_digitalWrite(49, digital[7]);
-  Fast_digitalWrite(50A, digital[8]);
-  Fast_digitalWrite(51A, digital[9]);
-  Fast_digitalWrite(52A, digital[10]);
-  Fast_digitalWrite(53A, digital[11]);
-  // Update together
-  updateAnalog();
+//  // Digital
+//  Fast_digitalWrite(42, digital[0]);
+//  Fast_digitalWrite(43, digital[1]);
+//  Fast_digitalWrite(44, digital[2]);
+//  Fast_digitalWrite(45, digital[3]);
+//  Fast_digitalWrite(46, digital[4]);
+//  Fast_digitalWrite(47, digital[5]);
+//  Fast_digitalWrite(48, digital[6]);
+//  Fast_digitalWrite(49, digital[7]);
+//  Fast_digitalWrite(50A, digital[8]);
+//  Fast_digitalWrite(51A, digital[9]);
+//  Fast_digitalWrite(52A, digital[10]);
+//  Fast_digitalWrite(53A, digital[11]);
+//  // Update together
+  updateDAC();
   updateOutputs();
 }
 
-void Segment::updateAnalogValue(uint8_t analog_output, double analog_volt)
-{
-  if (analog_output < 4)
-  {
-    Wire2.beginTransmission(DAC1);
-    Wire2.write((analog_output % 4) * 2);
-    Wire2.write(highByte(voltToAnalog(analog_volt)));
-    Wire2.write(lowByte(voltToAnalog(analog_volt)));
-    Wire2.endTransmission(false);
-  }
-  else if (analog_output >= 4)
-  {
-    Wire2.beginTransmission(DAC2);
-    Wire2.write((analog_output % 4) * 2);
-    Wire2.write(highByte(voltToAnalog(analog_volt)));
-    Wire2.write(lowByte(voltToAnalog(analog_volt)));
-    Wire2.endTransmission(false);
-  }
-}
+//void Segment::updateAnalogValue(uint8_t analog_output, double analog_volt)
+//{
+//  if (analog_output < 4)
+//  {
+//    Wire2.beginTransmission(DAC1);
+//    Wire2.write((analog_output % 4) * 2);
+//    Wire2.write(highByte(voltToAnalog(analog_volt)));
+//    Wire2.write(lowByte(voltToAnalog(analog_volt)));
+//    Wire2.endTransmission(false);
+//  }
+//  else if (analog_output >= 4)
+//  {
+//    Wire2.beginTransmission(DAC2);
+//    Wire2.write((analog_output % 4) * 2);
+//    Wire2.write(highByte(voltToAnalog(analog_volt)));
+//    Wire2.write(lowByte(voltToAnalog(analog_volt)));
+//    Wire2.endTransmission(false);
+//  }
+//}
 
-void Segment::updateAnalog()
+void Segment::updateDAC()
 {
   Wire2.beginTransmission(72);
   Wire2.write(48);
   Wire2.write(1);
   Wire2.write(1);
-  Wire2.endTransmission(false);
+  Wire2.endTransmission();
 }
 
 uint16_t voltToAnalog(double volt)
@@ -504,12 +515,14 @@ uint16_t voltToAnalog(double volt)
 
 void Segment::updateOutputs()
 {
-  Fast_digitalWrite(9, HIGH);
-  Fast_digitalWrite(7, HIGH);
-  Fast_digitalWrite(5, HIGH);
-  Fast_digitalWrite(9, LOW);
-  Fast_digitalWrite(7, LOW);
-  Fast_digitalWrite(5, LOW);
+//  Fast_digitalWrite(9, HIGH);
+//  Fast_digitalWrite(7, HIGH);
+//  Fast_digitalWrite(5, HIGH);
+//  Fast_digitalWrite(9, LOW);
+//  Fast_digitalWrite(7, LOW);
+//  Fast_digitalWrite(5, LOW);
+  Fast_digitalWrite(2, HIGH);
+  Fast_digitalWrite(2, LOW);
 }
 
 Output* Segment::getOutput(uint8_t output)
@@ -528,15 +541,15 @@ void Segment::run()
 
 void Segment::stop()
 {
-  for(uint8_t i = 0; i < 12; i++)
-  {
-    digitalWrite(i + 42, LOW);
-  }
-  for(uint8_t i = 0; i < 8; i++)
-  {
-    updateAnalogValue(i, 0);
-  }
-  updateAnalog();
+//  for(uint8_t i = 0; i < 12; i++)
+//  {
+//    digitalWrite(i + 42, LOW);
+//  }
+//  for(uint8_t i = 0; i < 8; i++)
+//  {
+//    updateAnalogValue(i, 0);
+//  }
+//  updateAnalog();
   for(uint8_t i = 0; i < num_outputs; i++)
   {
     output_list[i]->updateFrequency(0);
@@ -572,12 +585,15 @@ ScanFunction::ScanFunction()
 
 void ScanFunction::addSegment(JsonObject& segment)
 {
-  Segment* new_segment = new Segment(segment);
-  if(new_segment->getActive())
-  {
-    segment_list[current_size] = new_segment;
+//  if(current_size < max_size)
+//  {
+    segment_list[current_size] = new Segment(segment);
     current_size++;
-  }
+//  }
+//  else
+//  {
+//    SerialASC.println("Too many segments");
+//  }
 }
 
 uint32_t ScanFunction::getSegmentDuration(uint8_t segment_index)
@@ -617,11 +633,6 @@ void ScanFunction::clear()
 
 void ScanFunction::run()
 {
-//  for(uint8_t i = 0; i < 3; i ++)
-//  {
-//    segment_list[1]->getOutput(i)->chooseSPIOutput();
-//    segment_list[1]->getOutput(i)->updateFrequency(segment_list[1]->getOutput(i)->getFrequency());
-//  }
   for(uint8_t i = 0; i < current_size; i++)
   {
     segment_list[i]->setupSegment();
@@ -680,38 +691,56 @@ void setup() {
 //  SPI.begin();
   pinMode(62, OUTPUT);
   pinMode(63, OUTPUT);
-//  Wire.setWirePins(UsePins_16_17);
+//  Wire.setWirePins(UsePins_SDA1_SCL1);
 //  Wire.setWireBaudrate(400000);
-  Wire3.begin();
-  Wire3.setClock(152435);
+  Wire2.begin();
+//  Wire3.begin();
+//  Wire3.setClock(152435);
 //  Wire.beginTransmission(4);
 //  Wire.endTransmission(false);
 //  Wire.setClock(1000000);
-  Wire2.begin();
-  Wire2.setClock(155000);
+//  tick_ctrl.begin();
+//  tick_ctrl.setClock(155000);
   for(int i = 22; i < 54; i++)
   {
     pinMode(i, OUTPUT);
     digitalWrite(i, LOW);
   }
-  for(int i = 4; i < 12; i++)
+  for(int i = 2; i < 14; i++)
   {
     pinMode(i, OUTPUT);
+    digitalWrite(i, LOW);
   }
-  Fast_digitalWrite(10, HIGH);
-  Fast_digitalWrite(8, HIGH);
-  Fast_digitalWrite(8, LOW);
-  Fast_digitalWrite(9, HIGH);
-  Fast_digitalWrite(9, LOW);
-  Fast_digitalWrite(6, HIGH);
-  Fast_digitalWrite(6, LOW);
-  Fast_digitalWrite(7, HIGH);
-  Fast_digitalWrite(7, LOW);
-  Fast_digitalWrite(4, HIGH);
-  Fast_digitalWrite(4, LOW);
-  Fast_digitalWrite(5, HIGH);
-  Fast_digitalWrite(5, LOW);
+//  Fast_digitalWrite(3, HIGH);
+//  Fast_digitalWrite(3, LOW);
+//  Fast_digitalWrite(10, HIGH);
+//  Fast_digitalWrite(8, HIGH);
+//  Fast_digitalWrite(8, LOW);
+//  Fast_digitalWrite(9, HIGH);
+//  Fast_digitalWrite(9, LOW);
+//  Fast_digitalWrite(6, HIGH);
+//  Fast_digitalWrite(6, LOW);
+//  Fast_digitalWrite(7, HIGH);
+//  Fast_digitalWrite(7, LOW);
+//  Fast_digitalWrite(4, HIGH);
+//  Fast_digitalWrite(4, LOW);
+//  Fast_digitalWrite(5, HIGH);
+//  Fast_digitalWrite(5, LOW);
 //  CreateCore1Interrupt(StartDataAcquisition);
+
+                                                                                                                    //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                                                                                    //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                                                                                    ///////////////////////////////////////////Change Parameters Here/////////////////////////////////////////////
+                                                                                                                    //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                                                                                    //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  char scan_string[] = "{\"Name\":\"0\",\"Active\":\"False\",\"Record\":\"False\",\"Duration\":1000.0,\"Outputs\":[{\"Start\":1000.0,\"End\":1000.0,\"Duty Cycle\":50.0,\"Tickle\":\"Output 3\",\"Amplitude\":5.0,\"Phase\":0},{\"Start\":1000.0,\"End\":1000.0,\"Duty Cycle\":50.0,\"Tickle\":\"Output 3\",\"Amplitude\":0.0,\"Phase\":0},{\"Start\":1000.0,\"End\":1000.0,\"Duty Cycle\":50.0,\"Tickle\":\"Output 3\",\"Amplitude\":0.0,\"Phase\":0},],\"Analog\":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],\"Digital\":[\"False\",\"False\",\"False\",\"False\",\"False\",\"False\",\"False\",\"False\",\"False\",\"False\",\"False\",\"False\"]}";
+                        
+  StaticJsonBuffer<MAX_INPUT_LENGTH> json_buffer;
+  JsonObject& scan_segment = json_buffer.parseObject(scan_string);
+  if(scan_segment.success())
+  {
+    scan_function.addSegment(scan_segment);
+  }
   
   SerialASC.println("Setup complete");
 }
@@ -720,25 +749,8 @@ void setup() {
 void loop()
 {
   // put your main code for core 0 here, to run repeatedly:
-  if(SerialASC.available())
-  {
-    char choice = SerialASC.read();
-    switch(choice)
-    {
-      case 'D':
-        downloadScan();
-        break;
-      case 'U':
-        uploadScan();
-        break;
-      case 'R':
-        runScan();
-        break;
-      case 'S':
-        stopScan();
-        break;
-    }
-  }
+  scan_function.run();
+
 }
 
 
@@ -757,8 +769,6 @@ EndOfInitialised_CPU1_Variables
 
 void setup1() {
   // put your setup code for core 1 here, to run once:
-  pinMode(13, OUTPUT);
-  digitalWrite(13, LOW);
 }
 
 
@@ -766,16 +776,6 @@ void loop1() {
 
   
 }
-
-//void StartDataAcquisition()
-//{
-//  uint32_t start_time = micros();
-//  Fast_digitalWrite(13, 1);
-//  while(micros() - start_time < record_duration);
-//  Fast_digitalWrite(13, 0);
-//  SerialASC.write(0);
-//}
-
 
 
 /*** Core 2 ***/
@@ -809,25 +809,6 @@ void downloadScan()
 {
   SerialASC.println("Download initiated");
   scan_function.clear();
-//  StaticJsonBuffer<MAX_INPUT_LENGTH> json_buffer;
-//  JsonArray& scan_list = json_buffer.parseArray(SerialASC);
-//  if(scan_list.success())
-//  {
-//    for(uint8_t i = 0; i < scan_list.size(); i++)
-//    {
-//      JsonObject& segment = scan_list[i];
-//      scan_function.addSegment(segment);
-//      if(scan_function.getSegmentRecord(i))
-//      {
-//        record_duration = scan_function.getSegmentDuration(i) * 1000;
-//      }
-//    }
-//    SerialASC.println("Download successful");
-//  }
-//  else
-//  {
-//    SerialASC.println("Download failed");
-//  }
   SerialASC.read(); // Read opening '[' from json array before parsing objects
   char next_char = ','; // Comma separates json objects in array
   while(next_char == ',')
@@ -850,37 +831,7 @@ void downloadScan()
     if(next_char == ']'){SerialASC.println("Download successful");}
   }
   while(SerialASC.available()){SerialASC.read();} // Clear input buffer
-  SerialASC.println(scan_function.size());
   SerialASC.println("Download finished");
   return;
 }
 
-void uploadScan()
-{
-  SerialASC.println("Upload initiated");
-  scan_function.print();
-  SerialASC.println("Upload finished");
-  return;
-}
-
-void runScan()
-{
-//  SerialASC.println("Running scan function");
-  char choice = ' ';
-  while(choice != 'S')
-  {
-    scan_function.run();
-    if(SerialASC.available())
-    {
-      choice = SerialASC.read();
-    }
-  }
-  scan_function.stop();
-  return;
-}
-
-void stopScan()
-{
-  scan_function.stop();
-  return;
-}

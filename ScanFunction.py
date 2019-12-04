@@ -309,7 +309,7 @@ class RangedFloat(float):
 class FreqFloat(float):
     def __new__(cls, value):
         try:
-            v = float.__new__(cls, min(max(0, float(value)), 500000))
+            v = float.__new__(cls, min(max(0, float(value)), 1000000))
         except ValueError:
             v = 0
         return v

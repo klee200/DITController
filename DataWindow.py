@@ -179,7 +179,7 @@ class DataPlot(Plot):
 
     def update(self, data_string):
         self.dataPlotTrigger = False
-        self.data.append([data_string[j * 2] + data_string[j * 2 + 1] * 256 for j in range(int(len(data_string) / 2))])
+        self.data.append([data_string[j * 2] + data_string[j * 2 + 1] * 256 for j in range(0, int(len(data_string) / 2), 4)])
         if abs(len(self.data[-1]) - len(self.y)) > 10 and self.numAverages > 1:
             self.data.pop(-1)
         if len(self.data) > self.numAverages:
