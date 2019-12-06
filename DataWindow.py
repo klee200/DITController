@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 import pyqtgraph as pg
+import numpy as np
 import pdb
 
 pg.setConfigOption('background', 'w')

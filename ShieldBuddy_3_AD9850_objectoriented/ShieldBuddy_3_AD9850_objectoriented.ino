@@ -3,7 +3,7 @@
 #include<Wire.h>
 #include<SoftwareWire.h>
 SoftwareWire Wire3(SDA1, SCL1, true, false);
-SoftwareWire Wire2(21, 20, true, false);
+//SoftwareWire Wire2(21, 20, true, false);
 
 bool data_acquire = false;
 
@@ -330,6 +330,7 @@ class Segment
     uint32_t getDuration();
     bool getActive();
     bool getRecord();
+    uint32_t getNumSteps();
     void print();
     void setupSegment();
     void updateAnalogValue(uint8_t analog_output, double analog_volt);
@@ -409,6 +410,11 @@ bool Segment::getRecord()
   return record;
 }
 
+uint32_t Segment::getNumSteps()
+{
+  return num_freq_steps;
+}
+
 void Segment::print()
 {
   SerialASC.print("Duration:\t\t"); SerialASC.println(duration);
@@ -471,29 +477,29 @@ void Segment::updateAnalogValue(uint8_t analog_output, double analog_volt)
 {
   if (analog_output < 4)
   {
-    Wire2.beginTransmission(DAC1);
-    Wire2.write((analog_output % 4) * 2);
-    Wire2.write(highByte(voltToAnalog(analog_volt)));
-    Wire2.write(lowByte(voltToAnalog(analog_volt)));
-    Wire2.endTransmission(false);
+    Wire.beginTransmission(DAC1);
+    Wire.write((analog_output % 4) * 2);
+    Wire.write(highByte(voltToAnalog(analog_volt)));
+    Wire.write(lowByte(voltToAnalog(analog_volt)));
+    Wire.endTransmission(false);
   }
   else if (analog_output >= 4)
   {
-    Wire2.beginTransmission(DAC2);
-    Wire2.write((analog_output % 4) * 2);
-    Wire2.write(highByte(voltToAnalog(analog_volt)));
-    Wire2.write(lowByte(voltToAnalog(analog_volt)));
-    Wire2.endTransmission(false);
+    Wire.beginTransmission(DAC2);
+    Wire.write((analog_output % 4) * 2);
+    Wire.write(highByte(voltToAnalog(analog_volt)));
+    Wire.write(lowByte(voltToAnalog(analog_volt)));
+    Wire.endTransmission(false);
   }
 }
 
 void Segment::updateAnalog()
 {
-  Wire2.beginTransmission(72);
-  Wire2.write(48);
-  Wire2.write(1);
-  Wire2.write(1);
-  Wire2.endTransmission(false);
+  Wire.beginTransmission(72);
+  Wire.write(48);
+  Wire.write(1);
+  Wire.write(1);
+  Wire.endTransmission(false);
 }
 
 uint16_t voltToAnalog(double volt)
@@ -617,21 +623,42 @@ void ScanFunction::clear()
 
 void ScanFunction::run()
 {
-//  for(uint8_t i = 0; i < 3; i ++)
-//  {
-//    segment_list[1]->getOutput(i)->chooseSPIOutput();
-//    segment_list[1]->getOutput(i)->updateFrequency(segment_list[1]->getOutput(i)->getFrequency());
-//  }
+  Fast_digitalWrite(8, HIGH);
+  Fast_digitalWrite(8, LOW);
+  Fast_digitalWrite(22, LOW);
+  Fast_digitalWrite(23, LOW);
+  Fast_digitalWrite(62, HIGH);
+  Fast_digitalWrite(62, LOW);
+  Fast_digitalWrite(9, HIGH);
+  Fast_digitalWrite(9, LOW);
+  Fast_digitalWrite(6, HIGH);
+  Fast_digitalWrite(6, LOW);
+  Fast_digitalWrite(22, HIGH);
+  Fast_digitalWrite(23, LOW);
+  Fast_digitalWrite(62, HIGH);
+  Fast_digitalWrite(62, LOW);
+  Fast_digitalWrite(7, HIGH);
+  Fast_digitalWrite(7, LOW);
+  Fast_digitalWrite(4, HIGH);
+  Fast_digitalWrite(4, LOW);
+  Fast_digitalWrite(22, LOW);
+  Fast_digitalWrite(23, HIGH);
+  Fast_digitalWrite(62, HIGH);
+  Fast_digitalWrite(62, LOW);
+  Fast_digitalWrite(5, HIGH);
+  Fast_digitalWrite(5, LOW);
   for(uint8_t i = 0; i < current_size; i++)
   {
+//    previous_millis = millis();
     segment_list[i]->setupSegment();
+    uint32_t num_steps = segment_list[i]->getNumSteps();
     if(segment_list[i]->getRecord())
     {
 //      InterruptCore1();
       Fast_digitalWrite(13, 1);
     }
-    previous_millis = millis();
-    while(millis() - previous_millis <= segment_list[i]->getDuration())
+//    while(millis() - previous_millis <= segment_list[i]->getDuration())
+    for(uint32_t j = 0; j < num_steps; j++)
     {
       segment_list[i]->run();
     }
@@ -681,14 +708,14 @@ void setup() {
   pinMode(62, OUTPUT);
   pinMode(63, OUTPUT);
 //  Wire.setWirePins(UsePins_16_17);
-//  Wire.setWireBaudrate(400000);
   Wire3.begin();
   Wire3.setClock(152435);
 //  Wire.beginTransmission(4);
 //  Wire.endTransmission(false);
 //  Wire.setClock(1000000);
-  Wire2.begin();
-  Wire2.setClock(155000);
+  Wire.setWireBaudrate(400000);
+  Wire.begin();
+//  Wire2.setClock(155000);
   for(int i = 22; i < 54; i++)
   {
     pinMode(i, OUTPUT);
@@ -701,14 +728,26 @@ void setup() {
   Fast_digitalWrite(10, HIGH);
   Fast_digitalWrite(8, HIGH);
   Fast_digitalWrite(8, LOW);
+  Fast_digitalWrite(22, LOW);
+  Fast_digitalWrite(23, LOW);
+  Fast_digitalWrite(62, HIGH);
+  Fast_digitalWrite(62, LOW);
   Fast_digitalWrite(9, HIGH);
   Fast_digitalWrite(9, LOW);
   Fast_digitalWrite(6, HIGH);
   Fast_digitalWrite(6, LOW);
+  Fast_digitalWrite(22, HIGH);
+  Fast_digitalWrite(23, LOW);
+  Fast_digitalWrite(62, HIGH);
+  Fast_digitalWrite(62, LOW);
   Fast_digitalWrite(7, HIGH);
   Fast_digitalWrite(7, LOW);
   Fast_digitalWrite(4, HIGH);
   Fast_digitalWrite(4, LOW);
+  Fast_digitalWrite(22, LOW);
+  Fast_digitalWrite(23, HIGH);
+  Fast_digitalWrite(62, HIGH);
+  Fast_digitalWrite(62, LOW);
   Fast_digitalWrite(5, HIGH);
   Fast_digitalWrite(5, LOW);
 //  CreateCore1Interrupt(StartDataAcquisition);
