@@ -143,18 +143,22 @@ void Output::updateTickle()
       switch(tickle_div)
       {
         case 2:
+          Fast_digitalWrite(33, LOW);
           Fast_digitalWrite(25, LOW);
           Fast_digitalWrite(26, LOW);
           break;
         case 4:
+          Fast_digitalWrite(33, LOW);
           Fast_digitalWrite(25, HIGH);
           Fast_digitalWrite(26, LOW);
           break;
         case 8:
+          Fast_digitalWrite(33, LOW);
           Fast_digitalWrite(25, LOW);
           Fast_digitalWrite(26, HIGH);
           break;
         case 16:
+          Fast_digitalWrite(33, LOW);
           Fast_digitalWrite(25, HIGH);
           Fast_digitalWrite(26, HIGH);
           break;
@@ -556,7 +560,6 @@ class ScanFunction
   private:
     uint8_t current_size;
     const static uint8_t max_size = 10;
-    unsigned long previous_millis;
     Segment* segment_list[max_size];
   public:
     ScanFunction();
@@ -649,7 +652,7 @@ void ScanFunction::run()
   Fast_digitalWrite(5, LOW);
   for(uint8_t i = 0; i < current_size; i++)
   {
-//    previous_millis = millis();
+//    unsigned long previous_millis = millis();
     segment_list[i]->setupSegment();
     uint32_t num_steps = segment_list[i]->getNumSteps();
     if(segment_list[i]->getRecord())

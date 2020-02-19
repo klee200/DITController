@@ -18,10 +18,11 @@ class MainWindow(QMainWindow):
         self.btnWidget = BtnWidget()
         
         self.connectWindow = ConnectionWindow(self.textWidget)
+        self.dataSettingsWindow = DataSettingsWindow()
         self.addRemoveWindow = AddRemoveSegmentWindow()
         self.calcWindow = CalculatorWindow()
         
-        self.dataWindow = DataWindow(self.connectWindow.dataThread.dataPlotTrigger)
+        self.dataWindow = DataWindow()
         
         self.build_menu()
         self.build_window()
@@ -42,6 +43,7 @@ class MainWindow(QMainWindow):
         
         self.settingsMenu = self.menuBar().addMenu("Settings")
         self.connectAction = self.settingsMenu.addAction("Connect")
+        self.dataSettingsAction = self.settingsMenu.addAction("Data Settings")
 
     def build_window(self):
         self.setCentralWidget(QWidget())

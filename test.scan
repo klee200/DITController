@@ -1,45 +1,6 @@
 [
     {
-        "Name": "0",
-        "Active": "False",
-        "Record": "False",
-        "Duration": 1000.0,
-        "Outputs": [
-            {
-                "Start": 100000.0,
-                "End": 100000.0,
-                "Duty Cycle": 50.0,
-                "Tickle": "Output 3",
-                "Amplitude": 0.0,
-                "Phase": 0
-            },
-            {
-                "Start": 0.0,
-                "End": 0.0,
-                "Duty Cycle": 0.0,
-                "Tickle": "Output 3",
-                "Amplitude": 0.0,
-                "Phase": 0
-            },
-            {
-                "Start": 0.0,
-                "End": 0.0,
-                "Duty Cycle": 0.0,
-                "Tickle": "Output 3",
-                "Amplitude": 0.0,
-                "Phase": 0
-            }
-        ],
-        "Analog": [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-        ],
+        "Duration": 200.0,
         "Digital": [
             "False",
             "False",
@@ -53,6 +14,101 @@
             "False",
             "False",
             "False"
+        ],
+        "Record": "False",
+        "Name": "0",
+        "Active": "True",
+        "Analog": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "Outputs": [
+            {
+                "End": 0.0,
+                "Start": 0.0,
+                "Tickle": "Output 3",
+                "Amplitude": 0.0,
+                "Duty Cycle": 0.0,
+                "Phase": 0
+            },
+            {
+                "End": 0.0,
+                "Start": 0.0,
+                "Tickle": "Output 3",
+                "Amplitude": 0.0,
+                "Duty Cycle": 0.0,
+                "Phase": 0
+            },
+            {
+                "End": 0.0,
+                "Start": 0.0,
+                "Tickle": "Output 3",
+                "Amplitude": 0.0,
+                "Duty Cycle": 0.0,
+                "Phase": 0
+            }
+        ]
+    },
+    {
+        "Duration": 250.0,
+        "Digital": [
+            "False",
+            "False",
+            "False",
+            "False",
+            "False",
+            "False",
+            "False",
+            "False",
+            "False",
+            "False",
+            "False",
+            "False"
+        ],
+        "Record": "True",
+        "Outputs": [
+            {
+                "End": 100000.0,
+                "Start": 100000.0,
+                "Tickle": "Output 3",
+                "Amplitude": 0.0,
+                "Duty Cycle": 50.0,
+                "Phase": 0
+            },
+            {
+                "End": 0.0,
+                "Start": 0.0,
+                "Tickle": "Output 3",
+                "Amplitude": 0.0,
+                "Duty Cycle": 0.0,
+                "Phase": 0
+            },
+            {
+                "End": 0.0,
+                "Start": 0.0,
+                "Tickle": "Output 3",
+                "Amplitude": 0.0,
+                "Duty Cycle": 0.0,
+                "Phase": 0
+            }
+        ],
+        "Name": "0",
+        "Active": "True",
+        "Analog": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
         ]
     }
 ]

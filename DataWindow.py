@@ -1,18 +1,17 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 import pyqtgraph as pg
-import numpy as np
 import pdb
 
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
 
 class DataWindow(QMainWindow):
-    def __init__(self, dataPlotTrigger):
+    def __init__(self):
         super(DataWindow, self).__init__()
         
         self.dataToolWidget = DataToolWidget()
-        self.dataPlot = DataPlot(dataPlotTrigger)
+        self.dataPlot = DataPlot()
         self.displayToolWidget = DisplayToolWidget()
         self.displayPlot = DisplayPlot()
         self.integralToolWidget = IntegralToolWidget()
@@ -169,36 +168,44 @@ class Plot(pg.PlotWidget):
 class DataPlot(Plot):
     updated = pyqtSignal(object)
     updated2 = pyqtSignal(object)
-    def __init__(self, dataPlotTrigger):
+    def __init__(self):
         super(DataPlot, self).__init__()
         
-        self.dataPlotTrigger = dataPlotTrigger
+        # self.dataThread = dataThread
+        self.dataSample = 4
         self.numAverages = 1
         self.data = []
         
         self.build_widget()
 
     def update(self, data_string):
-        self.dataPlotTrigger = False
-        self.data.append([data_string[j * 2] + data_string[j * 2 + 1] * 256 for j in range(0, int(len(data_string) / 2), 4)])
+        # self.dataThread.dataPlotTrigger = False
+        self.data.append([data_string[j * 2] + data_string[j * 2 + 1] * 256 for j in range(0, int(len(data_string) / 2), self.dataSample)])
         if abs(len(self.data[-1]) - len(self.y)) > 10 and self.numAverages > 1:
             self.data.pop(-1)
-        if len(self.data) > self.numAverages:
-            self.data = self.data[-self.numAverages:]
-        self.y = [sum(d) / len(self.data) for d in zip(*self.data)]
-        if len(self.y) > 0:
-            if len(self.x) != len(self.y):
-                self.x = range(len(self.y))
-            self.plot(self.x, self.y, clear=True)
-        self.updated.emit(str(len(self.data)))
-        self.updated2.emit(sum(self.data[-1]))
-        self.dataPlotTrigger = True
+        else:
+            if len(self.data) > self.numAverages:
+                self.data = self.data[-self.numAverages:]
+            self.y = [sum(d) / len(self.data) for d in zip(*self.data)]
+            if len(self.y) > 0:
+                if len(self.x) != len(self.y):
+                    self.x = range(len(self.y))
+                self.plot(self.x, self.y, clear=True)
+            self.updated.emit(str(len(self.data)))
+            self.updated2.emit(sum(self.data[-1]))
+        # self.dataThread.dataPlotTrigger = True
         
     def set_averages(self, value):
         try:
             self.numAverages = int(value)
         except ValueError:
             self.numAverages = 1
+    
+    def set_sample(self, value):
+        try:
+            self.dataSample = int(value)
+        except ValueError:
+            self.dataSample = 4
                
 class DisplayPlot(Plot):
     def __init__(self):

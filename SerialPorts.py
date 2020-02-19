@@ -41,14 +41,14 @@ class DataThread(QThread):
         self.controlPort = controlPort
         
         self.n = 0
-        self.numData = 1
+        # self.numData = 1
         self.maxNumData = 100
         self.dataString = [b'' for n in range(self.maxNumData)]
-        self.data = [[] for n in range(self.numData)]
+        # self.data = [[] for n in range(self.numData)]
         
         self.controlPortAccess = False
         self.dataPortAccess = False
-        self.dataPlotTrigger = True
+        # self.dataPlotTrigger = True
         
     # def run(self):
         # while self.dataPort.is_open:
@@ -74,8 +74,8 @@ class DataThread(QThread):
                 if self.dataPortAccess:
                     while self.dataPort.in_waiting:
                         self.dataString[self.n] += self.dataPort.read(self.dataPort.in_waiting)
-                    if self.dataPlotTrigger:
-                        self.updateSignal.emit(self.dataString[self.n].strip(b'stop'))
+                    # if self.dataPlotTrigger:
+                    self.updateSignal.emit(self.dataString[self.n].strip(b'stop'))
                     self.n = (self.n + 1) % self.maxNumData
                     self.dataString[self.n] = b''
                     self.dataPort.reset_input_buffer()

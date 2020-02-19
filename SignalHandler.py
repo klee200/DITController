@@ -7,12 +7,14 @@ class SignalHandler(object):
     def __init__(self, mainWindow):
         mainWindow.saveAction.triggered.connect(mainWindow.scanWidget.save_scan)
         mainWindow.openAction.triggered.connect(mainWindow.scanWidget.open_scan)
-    
+        
+        
         mainWindow.addRemoveAction.triggered.connect(mainWindow.addRemoveWindow.show)
         mainWindow.calcAction.triggered.connect(mainWindow.calcWindow.show)
         
         mainWindow.addRemoveWindow.addSegBtn.clicked.connect(lambda: mainWindow.scanWidget.scanArea.add_segment(int(mainWindow.addRemoveWindow.addPositionBox.text()) - 1))
         mainWindow.addRemoveWindow.removeSegBtn.clicked.connect(lambda: mainWindow.scanWidget.scanArea.remove_segment(int(mainWindow.addRemoveWindow.removePositionBox.text()) - 1))
+        
         
         mainWindow.connectAction.triggered.connect(mainWindow.connectWindow.show)
         
@@ -22,6 +24,12 @@ class SignalHandler(object):
         mainWindow.connectWindow.dataDisconnectBtn.clicked.connect(mainWindow.connectWindow.disconnect_data)
         mainWindow.connectWindow.dataThread.updateSignal.connect(mainWindow.dataWindow.dataPlot.update)
         mainWindow.connectWindow.dataThread.textSignal.connect(mainWindow.textWidget.appendPlainText)
+        
+        
+        mainWindow.dataSettingsAction.triggered.connect(mainWindow.dataSettingsWindow.show)
+        
+        mainWindow.dataSettingsWindow.applyBtn.clicked.connect(lambda: mainWindow.dataWindow.dataPlot.set_sample(mainWindow.dataSettingsWindow.dataSampleBox.text()))
+        
         
         mainWindow.calcWindow.updated.connect(mainWindow.dataWindow.dataToolWidget.constBox.setText)
         mainWindow.calcWindow.updated.connect(mainWindow.dataWindow.displayToolWidget.constBox.setText)

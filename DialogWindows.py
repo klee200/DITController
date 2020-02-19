@@ -20,7 +20,7 @@ class ConnectionWindow(QDialog):
         self.setLayout(QGridLayout())
         
         self.layout().addWidget(QLabel("Control"), 0, 0)
-        self.controlBox = QLineEdit("COM6")
+        self.controlBox = QLineEdit("COM10")
         self.layout().addWidget(self.controlBox, 0, 1)
         
         self.line = QFrame()
@@ -76,6 +76,22 @@ class ConnectionWindow(QDialog):
         except SerialException:
             self.textWidget.appendPlainText("No connection found")
 
+class DataSettingsWindow(QDialog):
+    def __init__(self):
+        super(DataSettingsWindow, self).__init__()
+        self.build_window()
+        
+    def build_window(self):
+        self.setWindowFlags(Qt.WindowStaysOnTopHint)
+        self.setLayout(QGridLayout())
+        
+        self.layout().addWidget(QLabel("Data point sampling:"), 0, 0)
+        self.dataSampleBox = QLineEdit("4")
+        self.layout().addWidget(self.dataSampleBox, 0, 1)
+        
+        self.applyBtn = QPushButton("Apply")
+        self.layout().addWidget(self.applyBtn, 1, 0)
+
 class AddRemoveSegmentWindow(QDialog):
     def __init__(self):
         super(AddRemoveSegmentWindow, self).__init__()
@@ -109,14 +125,14 @@ class CalculatorWindow(QDialog):
         self.AMU = 1.66e-27
         self.rBox = QLineEdit("0.707")
         self.zBox = QLineEdit("0.774")
-        self.hvBox = QLineEdit("200")
-        self.lvBox = QLineEdit("-200")
+        self.hvBox = QLineEdit("400")
+        self.lvBox = QLineEdit("-400")
         self.dBox = QLineEdit("50")
         self.freqBtn = QPushButton("Frequency")
         self.freqBox = QLineEdit("200000")
         self.mzBtn = QPushButton("m/z")
         self.mzBox = QLineEdit("2000")
-        self.targetBox = QLineEdit("1")
+        self.targetBox = QLineEdit("0.5")
         self.brBox = QLineEdit()
         self.bzBox = QLineEdit()
         self.orBox = QLineEdit()

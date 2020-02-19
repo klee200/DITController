@@ -18,16 +18,16 @@ class Output
     double current_frequency;
     double period_squared_step;
     const static double tuning_ratio = 4294967296.0 / 125000000;
+    uint8_t DAC_address;
     double duty_cycle;
     uint8_t tickle_div;
     double tickle_amplitude;
     uint8_t tickle_phase;
-    const static uint8_t COMP_DAC = 76;
-    const static uint8_t MCP1 = 40;
-    const static uint8_t MCP2 = 41;
-    const static uint8_t MCP3 = 42;
-    const static uint8_t wiper0 = 0;
-    const static uint8_t wiper1 = 16;
+//    const static uint8_t MCP1 = 40;
+//    const static uint8_t MCP2 = 41;
+//    const static uint8_t MCP3 = 42;
+//    const static uint8_t wiper0 = 0;
+//    const static uint8_t wiper1 = 16;
   public:
     Output(uint8_t output_index, JsonObject& parameters, uint32_t num_frequency_steps);
     ~Output() {};
@@ -51,6 +51,7 @@ Output::Output(uint8_t output_index, JsonObject& parameters, uint32_t num_freque
   end_frequency = parameters["End"];
   period_squared_step = (1 / pow(end_frequency, 2) - 1 / pow(start_frequency, 2)) / num_frequency_steps;
   current_frequency = 1 / sqrt(1 / pow(start_frequency, 2) - period_squared_step);
+  DAC_address = 72 + output_index;
   duty_cycle = parameters["Duty Cycle"];
   if(duty_cycle != duty_cycle)
   {
@@ -113,135 +114,64 @@ uint16_t dutyCycleToAnalog(double duty_cycle)
 
 void Output::updateDutyCycle()
 {
-  Wire2.beginTransmission(COMP_DAC);
-  Wire2.write((output_number - 1) * 2);
+  Wire2.beginTransmission(DAC_address);
+  Wire2.write(6);
   Wire2.write(highByte(dutyCycleToAnalog(duty_cycle)));
   Wire2.write(lowByte(dutyCycleToAnalog(duty_cycle)));
   Wire2.endTransmission();
-//  switch(output_number)
-//  {
-//    case 1:
-//      Wire3.beginTransmission(MCP1);
-//      break;
-//    case 2:
-//      Wire3.beginTransmission(MCP2);
-//      break;
-//    case 3:
-//      Wire3.beginTransmission(MCP3);
-//      break;
-//  }
-//  Wire3.write(wiper0);
-//  Wire3.write(dutyCycleToAnalog(duty_cycle));
-//  Wire3.endTransmission(false);
 }
 
-uint8_t amplitudeToAnalog(double tickle_amplitude)
+uint16_t amplitudeToDAC(double tickle_amplitude)
 {
-  uint8_t analog_value = (5 - tickle_amplitude) * 255 / 5;
-  return analog_value;
+  uint16_t DAC_value = tickle_amplitude * 65535;
+  return DAC_value;
 }
 
 void Output::updateTickle()
 {
-//  switch(output_number)
-//  {
-//    case 1:
-//      switch(tickle_div)
-//      {
-//        case 2:
-//          Fast_digitalWrite(25, LOW);
-//          Fast_digitalWrite(26, LOW);
-//          break;
-//        case 4:
-//          Fast_digitalWrite(25, HIGH);
-//          Fast_digitalWrite(26, LOW);
-//          break;
-//        case 8:
-//          Fast_digitalWrite(25, LOW);
-//          Fast_digitalWrite(26, HIGH);
-//          break;
-//        case 16:
-//          Fast_digitalWrite(25, HIGH);
-//          Fast_digitalWrite(26, HIGH);
-//          break;
-//        case 0:
-//          Fast_digitalWrite(33, HIGH);
-//          break;
-//      }
-//      Wire3.beginTransmission(MCP1);
-//      break;
-//    case 2:
-//      switch(tickle_div)
-//      {
-//        case 2:
-//          Fast_digitalWrite(34, LOW);
-//          Fast_digitalWrite(28, LOW);
-//          Fast_digitalWrite(29, LOW);
-//          break;
-//        case 4:
-//          Fast_digitalWrite(34, LOW);
-//          Fast_digitalWrite(28, HIGH);
-//          Fast_digitalWrite(29, LOW);
-//          break;
-//        case 8:
-//          Fast_digitalWrite(34, LOW);
-//          Fast_digitalWrite(28, LOW);
-//          Fast_digitalWrite(29, HIGH);
-//          break;
-//        case 16:
-//          Fast_digitalWrite(34, LOW);
-//          Fast_digitalWrite(28, HIGH);
-//          Fast_digitalWrite(29, HIGH);
-//          break;
-//        case 0:
-//          Fast_digitalWrite(34, HIGH);
-//          break;
-//      }
-//      Wire3.beginTransmission(MCP2);
-//      break;
-//    case 3:
-//      switch(tickle_div)
-//      {
-//        case 2:
-//          Fast_digitalWrite(31, LOW);
-//          Fast_digitalWrite(32, LOW);
-//          break;
-//        case 4:
-//          Fast_digitalWrite(31, HIGH);
-//          Fast_digitalWrite(32, LOW);
-//          break;
-//        case 8:
-//          Fast_digitalWrite(31, LOW);
-//          Fast_digitalWrite(32, HIGH);
-//          break;
-//        case 16:
-//          Fast_digitalWrite(31, HIGH);
-//          Fast_digitalWrite(32, HIGH);
-//          break;
-//      }
-//      Wire3.beginTransmission(MCP3);
-//      break;
-//  }
-//  Wire3.write(wiper1);
-//  Wire3.write(amplitudeToAnalog(tickle_amplitude));
-//  Wire3.endTransmission(false);
-//  switch(output_number)
-//  {
-//    case 1:
-//      if(tickle_phase == 0)
-//      {
-//        Fast_digitalWrite(4, HIGH);
-//      }
-//      else
-//      {
-//        Fast_digitalWrite(4, LOW);
-//      }
-//      Wire.beginTransmission(MCP1);
-//      Wire.write(wiper0);
-//      Wire.write(amplitudeToAnalog(tickle_amplitude));
-//      Wire.endTransmission(false);
-//      break;
-//  }
+  if(tickle_amplitude == 0)
+  {
+    switch(output_number)
+    {
+      case 1:
+        Fast_digitalWrite(4, LOW);
+        break;
+      case 2:
+        Fast_digitalWrite(23, LOW);
+        break;
+      case 3:
+        Fast_digitalWrite(27, LOW);
+        break;
+    }
+  }
+  else
+  {
+    switch(output_number)
+    {
+      case 1:
+        Fast_digitalWrite(4, HIGH);
+        break;
+      case 2:
+        Fast_digitalWrite(23, HIGH);
+        break;
+      case 3:
+        Fast_digitalWrite(27, HIGH);
+        break;
+    }
+    uint16_t DAC_amp = amplitudeToDAC(tickle_amplitude);
+    
+    Wire2.beginTransmission(DAC_address);
+    Wire2.write(2);
+    Wire2.write(highByte(DAC_amp));
+    Wire2.write(lowByte(DAC_amp));
+    Wire2.endTransmission();
+    
+    Wire2.beginTransmission(DAC_address);
+    Wire2.write(4);
+    Wire2.write(highByte(DAC_amp));
+    Wire2.write(lowByte(DAC_amp));
+    Wire2.endTransmission();
+  }
 }
 
 void Output::chooseSPIOutput()
@@ -250,41 +180,7 @@ void Output::chooseSPIOutput()
   Fast_digitalWrite(8, output_index & 1);
   output_index >>= 1;
   Fast_digitalWrite(9, output_index & 1);
-//  switch(output_number)
-//  {
-//    case 1:
-//      Fast_digitalWrite(22, LOW);
-//      Fast_digitalWrite(23, LOW);
-//      break;
-//    case 2:
-//      Fast_digitalWrite(22, HIGH);
-//      Fast_digitalWrite(23, LOW);
-//      break;
-//    case 3:
-//      Fast_digitalWrite(22, LOW);
-//      Fast_digitalWrite(23, HIGH);
-//      break;
-//  }
 }
-
-//void Output::chooseUpdateOutput()
-//{
-//  switch(output_number)
-//  {
-//    case 1:
-//      Fast_digitalWrite(9, HIGH);
-//      Fast_digitalWrite(9, LOW);
-//      break;
-//    case 2:
-//      Fast_digitalWrite(7, HIGH);
-//      Fast_digitalWrite(7, LOW);
-//      break;
-//    case 3:
-//      Fast_digitalWrite(5, HIGH);
-//      Fast_digitalWrite(5, LOW);
-//      break;
-//  }
-//}
 
 void Output::resetFrequency()
 {
@@ -318,7 +214,6 @@ void Output::updateFrequency(uint32_t del_phase)
     Fast_digitalWrite(13, HIGH);
     Fast_digitalWrite(13, LOW);
   }
-//  chooseUpdateOutput();
 }
 
 double Output::getFrequency()
@@ -688,9 +583,11 @@ void setup() {
   // put your setup code for core 0 here, to run once:
   SerialASC.begin(SERIAL_RATE);
   SerialASC.setTimeout(SERIAL_TIMEOUT);
-//  SPI.begin();
-  pinMode(62, OUTPUT);
-  pinMode(63, OUTPUT);
+//  SPI.begin(BOARD_SPI_SS0);
+//  SPI.setBitOrder(MSBFIRST);
+//  SPI.setDataMode(SPI_MODE0);
+//  pinMode(62, OUTPUT);
+//  pinMode(63, OUTPUT);
 //  Wire.setWirePins(UsePins_SDA1_SCL1);
 //  Wire.setWireBaudrate(400000);
   Wire2.begin();
@@ -713,7 +610,7 @@ void setup() {
   }
 //  Fast_digitalWrite(3, HIGH);
 //  Fast_digitalWrite(3, LOW);
-//  Fast_digitalWrite(10, HIGH);
+  Fast_digitalWrite(10, HIGH);
 //  Fast_digitalWrite(8, HIGH);
 //  Fast_digitalWrite(8, LOW);
 //  Fast_digitalWrite(9, HIGH);
@@ -733,7 +630,7 @@ void setup() {
                                                                                                                     ///////////////////////////////////////////Change Parameters Here/////////////////////////////////////////////
                                                                                                                     //////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                                                                                     //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  char scan_string[] = "{\"Name\":\"0\",\"Active\":\"False\",\"Record\":\"False\",\"Duration\":1000.0,\"Outputs\":[{\"Start\":1000.0,\"End\":1000.0,\"Duty Cycle\":50.0,\"Tickle\":\"Output 3\",\"Amplitude\":5.0,\"Phase\":0},{\"Start\":1000.0,\"End\":1000.0,\"Duty Cycle\":50.0,\"Tickle\":\"Output 3\",\"Amplitude\":0.0,\"Phase\":0},{\"Start\":1000.0,\"End\":1000.0,\"Duty Cycle\":50.0,\"Tickle\":\"Output 3\",\"Amplitude\":0.0,\"Phase\":0},],\"Analog\":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],\"Digital\":[\"False\",\"False\",\"False\",\"False\",\"False\",\"False\",\"False\",\"False\",\"False\",\"False\",\"False\",\"False\"]}";
+  char scan_string[] = "{\"Name\":\"0\",\"Active\":\"False\",\"Record\":\"False\",\"Duration\":10000.0,\"Outputs\":[{\"Start\":5000.0,\"End\":5000.0,\"Duty Cycle\":50.0,\"Tickle\":\"Output 3\",\"Amplitude\":0.5,\"Phase\":0},{\"Start\":1000.0,\"End\":1000.0,\"Duty Cycle\":50.0,\"Tickle\":\"Output 3\",\"Amplitude\":0.0,\"Phase\":0},{\"Start\":5000.0,\"End\":5000.0,\"Duty Cycle\":50.0,\"Tickle\":\"Output 3\",\"Amplitude\":0.5,\"Phase\":0},],\"Analog\":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],\"Digital\":[\"False\",\"False\",\"False\",\"False\",\"False\",\"False\",\"False\",\"False\",\"False\",\"False\",\"False\",\"False\"]}";
                         
   StaticJsonBuffer<MAX_INPUT_LENGTH> json_buffer;
   JsonObject& scan_segment = json_buffer.parseObject(scan_string);
