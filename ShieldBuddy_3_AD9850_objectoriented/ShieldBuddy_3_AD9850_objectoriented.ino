@@ -675,7 +675,6 @@ void ScanFunction::run()
 
 void ScanFunction::stop()
 {
-//  SerialASC.println("Stopping scan function");
   if(current_size > 0)
   {
     segment_list[0]->stop();
@@ -907,7 +906,7 @@ void uploadScan()
 
 void runScan()
 {
-//  SerialASC.println("Running scan function");
+  SerialASC.println("Running scan function");
   char choice = ' ';
   while(choice != 'S')
   {
@@ -917,12 +916,13 @@ void runScan()
       choice = SerialASC.read();
     }
   }
-  scan_function.stop();
+  stopScan();
   return;
 }
 
 void stopScan()
 {
+  SerialASC.println("Stopping scan function");
   scan_function.stop();
   return;
 }

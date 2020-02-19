@@ -3,7 +3,6 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from collections import OrderedDict
 from math import *
-import pyqtgraph as pg
 import json
 import pdb
 
