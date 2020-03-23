@@ -48,6 +48,8 @@ Output::Output(uint8_t output_index, JsonObject& parameters, uint32_t num_freque
   output_number = output_index + 1;
   start_frequency = parameters["Start"];
   end_frequency = parameters["End"];
+//  period_squared_step = (1 / pow(end_frequency, 3) - 1 / pow(start_frequency, 3)) / num_frequency_steps;
+//  current_frequency = 1 / cbrt(1 / pow(start_frequency, 3) - period_squared_step);
   period_squared_step = (1 / pow(end_frequency, 2) - 1 / pow(start_frequency, 2)) / num_frequency_steps;
   current_frequency = 1 / sqrt(1 / pow(start_frequency, 2) - period_squared_step);
   duty_cycle = parameters["Duty Cycle"];
@@ -265,11 +267,13 @@ void Output::chooseSPIOutput()
 
 void Output::resetFrequency()
 {
+//  current_frequency = 1 / cbrt(1 / pow(start_frequency, 3) - period_squared_step);
   current_frequency = 1 / sqrt(1 / pow(start_frequency, 2) - period_squared_step);
 }
 
 uint32_t Output::nextFrequency()
 {
+//  current_frequency = 1 / cbrt(1 / pow(current_frequency, 3) + period_squared_step);
   current_frequency = 1 / sqrt(1 / pow(current_frequency, 2) + period_squared_step);
   if(current_frequency != current_frequency)
   {
@@ -559,7 +563,7 @@ class ScanFunction
 {
   private:
     uint8_t current_size;
-    const static uint8_t max_size = 10;
+    const static uint8_t max_size = 20;
     Segment* segment_list[max_size];
   public:
     ScanFunction();
@@ -581,11 +585,22 @@ ScanFunction::ScanFunction()
 
 void ScanFunction::addSegment(JsonObject& segment)
 {
-  Segment* new_segment = new Segment(segment);
-  if(new_segment->getActive())
+  if(current_size < max_size)
   {
-    segment_list[current_size] = new_segment;
-    current_size++;
+    Segment* new_segment = new Segment(segment);
+    if(new_segment->getActive())
+    {
+      segment_list[current_size] = new_segment;
+      current_size++;
+    }
+    else
+    {
+      delete new_segment;
+    }
+  }
+  else
+  {
+    SerialASC.print("Scan function length exceeds maximum size of "); SerialASC.println(max_size);
   }
 }
 
@@ -626,34 +641,37 @@ void ScanFunction::clear()
 
 void ScanFunction::run()
 {
-  Fast_digitalWrite(8, HIGH);
-  Fast_digitalWrite(8, LOW);
-  Fast_digitalWrite(22, LOW);
-  Fast_digitalWrite(23, LOW);
-  Fast_digitalWrite(62, HIGH);
-  Fast_digitalWrite(62, LOW);
-  Fast_digitalWrite(9, HIGH);
-  Fast_digitalWrite(9, LOW);
-  Fast_digitalWrite(6, HIGH);
-  Fast_digitalWrite(6, LOW);
-  Fast_digitalWrite(22, HIGH);
-  Fast_digitalWrite(23, LOW);
-  Fast_digitalWrite(62, HIGH);
-  Fast_digitalWrite(62, LOW);
-  Fast_digitalWrite(7, HIGH);
-  Fast_digitalWrite(7, LOW);
-  Fast_digitalWrite(4, HIGH);
-  Fast_digitalWrite(4, LOW);
-  Fast_digitalWrite(22, LOW);
-  Fast_digitalWrite(23, HIGH);
-  Fast_digitalWrite(62, HIGH);
-  Fast_digitalWrite(62, LOW);
-  Fast_digitalWrite(5, HIGH);
-  Fast_digitalWrite(5, LOW);
+//  unsigned long previous_millis = millis();
+//  Fast_digitalWrite(8, HIGH);
+//  Fast_digitalWrite(8, LOW);
+//  Fast_digitalWrite(22, LOW);
+//  Fast_digitalWrite(23, LOW);
+//  Fast_digitalWrite(62, HIGH);
+//  Fast_digitalWrite(62, LOW);
+//  Fast_digitalWrite(9, HIGH);
+//  Fast_digitalWrite(9, LOW);
+//  Fast_digitalWrite(6, HIGH);
+//  Fast_digitalWrite(6, LOW);
+//  Fast_digitalWrite(22, HIGH);
+//  Fast_digitalWrite(23, LOW);
+//  Fast_digitalWrite(62, HIGH);
+//  Fast_digitalWrite(62, LOW);
+//  Fast_digitalWrite(7, HIGH);
+//  Fast_digitalWrite(7, LOW);
+//  Fast_digitalWrite(4, HIGH);
+//  Fast_digitalWrite(4, LOW);
+//  Fast_digitalWrite(22, LOW);
+//  Fast_digitalWrite(23, HIGH);
+//  Fast_digitalWrite(62, HIGH);
+//  Fast_digitalWrite(62, LOW);
+//  Fast_digitalWrite(5, HIGH);
+//  Fast_digitalWrite(5, LOW);
+//  while(millis() - previous_millis <= 1);
   for(uint8_t i = 0; i < current_size; i++)
   {
 //    unsigned long previous_millis = millis();
     segment_list[i]->setupSegment();
+//    while(millis() - previous_millis <= 2);
     uint32_t num_steps = segment_list[i]->getNumSteps();
     if(segment_list[i]->getRecord())
     {
@@ -850,25 +868,6 @@ void downloadScan()
 {
   SerialASC.println("Download initiated");
   scan_function.clear();
-//  StaticJsonBuffer<MAX_INPUT_LENGTH> json_buffer;
-//  JsonArray& scan_list = json_buffer.parseArray(SerialASC);
-//  if(scan_list.success())
-//  {
-//    for(uint8_t i = 0; i < scan_list.size(); i++)
-//    {
-//      JsonObject& segment = scan_list[i];
-//      scan_function.addSegment(segment);
-//      if(scan_function.getSegmentRecord(i))
-//      {
-//        record_duration = scan_function.getSegmentDuration(i) * 1000;
-//      }
-//    }
-//    SerialASC.println("Download successful");
-//  }
-//  else
-//  {
-//    SerialASC.println("Download failed");
-//  }
   SerialASC.read(); // Read opening '[' from json array before parsing objects
   char next_char = ','; // Comma separates json objects in array
   while(next_char == ',')

@@ -33,7 +33,7 @@ class Output
     
     void print();
     void run();
-//    void stop();
+    void reset();
 
     void setupOutput();
     
@@ -93,12 +93,13 @@ void Output::run()
   updateFrequency();
 }
 
-// Changes current frequency to 0 and sends it to waveform chip
-//void Output::stop()
-//{
-//  current_frequency = 0;
-//  updateFrequency();
-//}
+// Reset phase to zero
+void Output::reset()
+{
+  switchSPI();
+  Fast_digitalWrite(13, HIGH);
+  Fast_digitalWrite(13, LOW);
+}
 
 // Setup start frequency, duty cycle, and amplitude
 void Output::setupOutput()
@@ -177,7 +178,7 @@ void Output::updateDutyCycle()
 // Function for calculating amplitude DAC value
 uint16_t amplitudeToDAC(double amplitude)
 {
-  uint16_t DAC_value = amplitude * 65535;
+  uint16_t DAC_value = amplitude / 5 * 65535;
   return DAC_value;
 }
 
@@ -263,7 +264,7 @@ class Segment
     
     void print();
     void run();
-//    void stop();
+    void reset();
     
     uint32_t getDuration();
     uint32_t getNumSteps();
@@ -393,24 +394,17 @@ void Segment::run()
   updateOutputs();
 }
 
-// Puts all digital low, analog to zero, and output frequencies to zero
-//void Segment::stop()
-//{
-//  for(uint8_t i = 0; i < 12; i++)
-//  {
-//    digitalWrite(i + 42, LOW);
-//  }
-//  for(uint8_t i = 0; i < 8; i++)
-//  {
-//    updateAnalog(i, 0);
-//  }
-//  updateAnalog();
-//  for(uint8_t i = 0; i < num_outputs; i++)
-//  {
-//    output_list[i]->stop();
-//  }
-//  updateOutputs();
-//}
+// Reset Output phase to zero
+void Segment::reset()
+{
+  Fast_digitalWrite(3, HIGH);
+  Fast_digitalWrite(3, LOW);
+  for(uint8_t i = 0; i < num_outputs; i++)
+  {
+    output_list[i]->reset();
+  }
+  updateOutputs();
+}
 
 // Initializes segment before running frequency ramps
 void Segment::setupSegment()
@@ -482,18 +476,18 @@ void Segment::updateAnalog()
 // Tells all DACs to update channels with current stored values
 void Segment::updateDAC()
 {
-  // Frequency outputs
-  Wire.beginTransmission(72);
-  Wire.write(48);
-  Wire.write(1);
-  Wire.write(1);
-  Wire.endTransmission();
   // Analog outputs
   Wire2.beginTransmission(72);
   Wire2.write(48);
   Wire2.write(1);
   Wire2.write(1);
   Wire2.endTransmission();
+  // Frequency outputs
+  Wire.beginTransmission(72);
+  Wire.write(48);
+  Wire.write(1);
+  Wire.write(1);
+  Wire.endTransmission();
 }
 
 // Tells frequency outputs to update to current stored values
@@ -531,6 +525,7 @@ class ScanFunction
     void print();
     void clear();
     void run();
+    void reset();
     void stop();
     uint8_t size();
     
@@ -568,13 +563,14 @@ void ScanFunction::clear()
 // Run scan function
 void ScanFunction::run()
 {
+//  reset();
   for(uint8_t i = 0; i < current_size; i++)
   {
     segment_list[i]->setupSegment();
     uint32_t num_steps = segment_list[i]->getNumSteps();
     if(segment_list[i]->getRecord())
     {
-      Fast_digitalWrite(13, 1);
+      Fast_digitalWrite(A5, 1);
     }
     for(uint32_t j = 0; j < num_steps; j++)
     {
@@ -582,10 +578,18 @@ void ScanFunction::run()
     }
     if(segment_list[i]->getRecord())
     {
-      Fast_digitalWrite(13, 0);
-      SerialASC.print(segment_list[i]->getOutput(1)->getFrequency());
+      Fast_digitalWrite(A5, 0);
+      SerialASC.print(segment_list[i]->getOutput(0)->getFrequency());
     }
   }
+}
+
+// Reset phase of scan function
+void ScanFunction::reset()
+{
+  unsigned long previous_millis = millis();
+  stop_segment.reset();
+  while(millis() - previous_millis <= 5);
 }
 
 // Run default segment for stopping scan function
@@ -655,29 +659,52 @@ void downloadScan()
       SerialASC.println("Download failed");
       next_char = '0';  // End while loop if bad segment
     }
-    if(next_char == ']'){SerialASC.println("Download successful");}
+    if(next_char == ']'){SerialASC.println("Download succesful");}
   }
+  SerialASC.print("Downloaded "); SerialASC.print(scan_function.size()); SerialASC.println(" segments");
   while(SerialASC.available()){SerialASC.read();} // Clear input buffer
   SerialASC.println("Download finished");
+  return;
+}
+
+void uploadScan()
+{
+  SerialASC.println("Upload initiated");
+  scan_function.print();
+  SerialASC.println("Upload finished");
+  return;
+}
+
+void runScan()
+{
+  SerialASC.println("Running scan function");
+  char choice = ' ';
+  while(choice != 'S')
+  {
+    scan_function.run();
+    if(SerialASC.available())
+    {
+      choice = SerialASC.read();
+    }
+  }
+  stopScan();
+  return;
+}
+
+void stopScan()
+{
+  scan_function.stop();
   return;
 }
 
 
 
 
-/*** Don't worry, the normal Arduino setup() and loop() are below this block! ***/
-
-/* LMU uninitialised data */
 StartOfUninitialised_LMURam_Variables
-/* Put your LMU RAM fast access variables that have no initial values here e.g. uint32 LMU_var; */
 EndOfUninitialised_LMURam_Variables
 
-/* LMU uninitialised data */
 StartOfInitialised_LMURam_Variables
-/* Put your LMU RAM fast access variables that have an initial value here e.g. uint32 LMU_var_init = 1; */
 EndOfInitialised_LMURam_Variables
-
-/* If you do not care where variables end up, declare them here! */
 
 
 /*** Core 0 ***/
@@ -700,20 +727,10 @@ void setup() {
     digitalWrite(i, LOW);
   }
   Fast_digitalWrite(10, HIGH);
+  IfxPort_setPinModeOutput(&MODULE_P10, 7, IfxPort_OutputMode_pushPull, IfxPort_OutputIdx_general);   // digital pin mode for A5, triggers Due for data collection
 
-                                                                                                                    //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                                                                                    //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                                                                                    ///////////////////////////////////////////Change Parameters Here/////////////////////////////////////////////
-                                                                                                                    //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                                                                                    //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  char scan_string[] = "{\"Name\":\"0\",\"Active\":\"True\",\"Record\":\"False\",\"Duration\":1000.0,\"Outputs\":[{\"Start\":100000.0,\"End\":100000.0,\"Duty Cycle\":50.0,\"Tickle\":\"Output 3\",\"Amplitude\":0,\"Phase\":0},{\"Start\":100000.0,\"End\":100000.0,\"Duty Cycle\":50.0,\"Tickle\":\"Output 3\",\"Amplitude\":1.0,\"Phase\":0},{\"Start\":5000.0,\"End\":5000.0,\"Duty Cycle\":50.0,\"Tickle\":\"Output 3\",\"Amplitude\":0.5,\"Phase\":0},],\"Analog\":[10.0,-10.0,0.0,0.0,0.0,0.0,0.0,0.0],\"Digital\":[\"True\",\"True\",\"True\",\"True\",\"True\",\"True\",\"False\",\"False\",\"False\",\"False\",\"False\",\"False\"]}";
-                        
-  StaticJsonBuffer<10000> json_buffer;
-  JsonObject& scan_segment = json_buffer.parseObject(scan_string);
-  if(scan_segment.success())
-  {
-    scan_function.addSegment(scan_segment);
-  }
+//  scan_function.reset();
+  stopScan();
   
   SerialASC.println("Setup complete");
 }
@@ -721,10 +738,31 @@ void setup() {
 
 void loop()
 {
-  // put your main code for core 0 here, to run repeatedly:
-  scan_function.run();
-
+  if(SerialASC.available())
+  {
+    char choice = SerialASC.read();
+    switch(choice)
+    {
+      case 'D':
+        downloadScan();
+        break;
+      case 'U':
+        uploadScan();
+        break;
+      case 'R':
+        runScan();
+        break;
+      case 'S':
+        stopScan();
+        break;
+    }
+  }
 }
+
+
+
+
+
 
 
 /*** Core 1 ***/

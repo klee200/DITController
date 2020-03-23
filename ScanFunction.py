@@ -77,7 +77,7 @@ class ScanArea(QScrollArea):
         super(ScanArea, self).__init__()
         
         self.headerLabels = ["Name", "Active", "Record", "Duration"]
-        self.headerTypes = [str, Bool, Bool, PosFloat]
+        self.headerTypes = [str, Bool, Bool, PosInt]
         self.OUTPUTS = 3
         self.outputLabels = ["Start", "End", "Duty Cycle", "Tickle", "Amplitude", "Phase"]
         self.outputTypes = [FreqFloat, FreqFloat, DCFloat, DivChoice, AmpFloat, PhaseChoice]
@@ -351,10 +351,10 @@ class AmpFloat(float):
             v = 0
         return v
         
-class PosFloat(float):
+class PosInt(int):
     def __new__(cls, value):
         try:
-            v = float.__new__(cls, max(0, float(value)))
+            v = int.__new__(cls, max(0, round(float(value))))
         except ValueError:
             v = 0
         return v
