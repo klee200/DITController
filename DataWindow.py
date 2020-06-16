@@ -10,6 +10,8 @@ class DataWindow(QMainWindow):
     def __init__(self):
         super(DataWindow, self).__init__()
         
+        self.setWindowTitle("Data Collector and Viewer")
+        
         self.isClosable = False
         
         self.dataToolWidget = DataToolWidget()

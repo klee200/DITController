@@ -12,6 +12,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         
+        self.setWindowTitle("Scan Function Creator")
+        
         self.textWidget = TextWidget()
         self.scanWidget = ScanWidget(self.textWidget)
         self.btnWidget = BtnWidget()
@@ -28,7 +30,7 @@ class MainWindow(QMainWindow):
         
         self.signal_handler()
         
-        self.showMaximized()
+        # self.showMaximized()
         
     def build_menu(self):
         self.menuBar()

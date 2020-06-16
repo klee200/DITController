@@ -6,6 +6,8 @@ from MainWindow import MainWindow
 def main():
     app = QApplication(sys.argv)
     mainWindow = MainWindow()
+    mainWindow.move(app.screens()[0].geometry().topLeft())
+    mainWindow.showMaximized()
     mainWindow.dataWindow.move(app.screens()[-1].geometry().topLeft())
     mainWindow.dataWindow.showMaximized()
     sys.exit(app.exec())
