@@ -1,12 +1,12 @@
-import pdb
-import sys
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
-from DialogWindows import *
-from DataWindow import *
-from ScanFunction import *
-from serial import *
-from time import *
+# import pdb
+from PyQt5.QtWidgets import QMainWindow, QWidget, QGridLayout, QMessageBox, QPushButton, QPlainTextEdit
+# from PyQt5.QtCore import *
+from DialogWindows import ConnectionWindow, DataSettingsWindow, AddRemoveSegmentWindow, CalculatorWindow
+from DataWindow import DataWindow
+from ScanFunction import ScanWidget
+from serial import SerialException
+from time import sleep
+import json
 
 
 class MainWindow(QMainWindow):
@@ -26,6 +26,8 @@ class MainWindow(QMainWindow):
         
         self.build_menu()
         self.build_window()
+        
+        self.signal_handler()
         
         self.showMaximized()
         
@@ -56,6 +58,32 @@ class MainWindow(QMainWindow):
         self.centralWidget().layout().addWidget(self.btnWidget, 0, 1)
         self.centralWidget().layout().addWidget(self.textWidget, 1, 1)
     
+    def signal_handler(self):
+        self.saveAction.triggered.connect(self.scanWidget.save_scan)
+        self.openAction.triggered.connect(self.scanWidget.open_scan)
+        
+        self.addRemoveAction.triggered.connect(self.addRemoveWindow.show)
+        self.calcAction.triggered.connect(self.calcWindow.show)
+        self.connectAction.triggered.connect(self.connectWindow.show)
+        self.dataSettingsAction.triggered.connect(self.dataSettingsWindow.show)
+        
+        self.addRemoveWindow.addSegBtn.clicked.connect(lambda: self.scanWidget.scanArea.add_segment(int(self.addRemoveWindow.addPositionBox.text()) - 1))
+        self.addRemoveWindow.removeSegBtn.clicked.connect(lambda: self.scanWidget.scanArea.remove_segment(int(self.addRemoveWindow.removePositionBox.text()) - 1))
+        
+        self.connectWindow.dataThread.dataSignal.connect(self.dataWindow.dataPlot.update)
+        self.connectWindow.dataThread.textSignal.connect(self.textWidget.appendPlainText)
+        
+        self.dataSettingsWindow.applyBtn.clicked.connect(lambda: self.dataWindow.dataPlot.set_sample(self.dataSettingsWindow.dataSampleBox.text()))
+        
+        self.calcWindow.updated.connect(self.dataWindow.dataToolWidget.constBox.setText)
+        self.calcWindow.updated.connect(self.dataWindow.displayToolWidget.constBox.setText)
+        self.calcWindow.updated.emit(str(self.calcWindow.constant))
+        
+        self.btnWidget.runBtn.clicked.connect(self.run_scan)
+        self.btnWidget.stopBtn.clicked.connect(self.stop_scan)
+        self.btnWidget.downloadBtn.clicked.connect(self.download_scan)
+        self.btnWidget.uploadBtn.clicked.connect(self.upload_scan)
+    
     def closeEvent(self, event):
         event.ignore()
         choice = self.scanWidget.save_check()
@@ -64,7 +92,10 @@ class MainWindow(QMainWindow):
         else:
             if choice == QMessageBox.Yes:
                 self.scanWidget.save_scan()
-            sys.exit()
+            self.dataWindow.isClosable = True
+            self.dataWindow.close()
+            event.accept()
+    #         sys.exit()
     
     def download_scan(self):
         try:

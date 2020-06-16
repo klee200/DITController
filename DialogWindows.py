@@ -1,7 +1,8 @@
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
-from SerialPorts import *
-from math import *
+from PyQt5.QtWidgets import QDialog, QGridLayout, QLabel, QLineEdit, QFrame, QPushButton
+from PyQt5.QtCore import Qt, pyqtSignal
+from SerialPorts import ControlPort, DataPort, DataThread
+from serial import SerialException
+from math import pi, cos, sin, sqrt, cosh, sinh, acos, inf, floor, log10
 import numpy as np
 
 class ConnectionWindow(QDialog):
@@ -14,6 +15,8 @@ class ConnectionWindow(QDialog):
         self.dataThread = DataThread(self.controlPort, self.dataPort)
         
         self.build_window()
+        
+        self.signal_handler()
 
     def build_window(self):
         self.setWindowFlags(Qt.WindowStaysOnTopHint)
@@ -39,6 +42,12 @@ class ConnectionWindow(QDialog):
         self.layout().addWidget(self.dataConnectBtn, 4, 0)
         self.dataDisconnectBtn = QPushButton('Disconnect Data')
         self.layout().addWidget(self.dataDisconnectBtn, 4, 1)
+        
+    def signal_handler(self):
+        self.controlConnectBtn.clicked.connect(self.connect_control)
+        self.controlDisconnectBtn.clicked.connect(self.disconnect_control)
+        self.dataConnectBtn.clicked.connect(self.connect_data)
+        self.dataDisconnectBtn.clicked.connect(self.disconnect_data)
 
     def connect_control(self):
         try:

@@ -1,7 +1,7 @@
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
+from PyQt5.QtWidgets import QMainWindow, QWidget, QGridLayout, QPushButton, QLabel, QLineEdit, QFileDialog
+from PyQt5.QtCore import pyqtSignal
 import pyqtgraph as pg
-import pdb
+# import pdb
 
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
@@ -9,6 +9,8 @@ pg.setConfigOption('foreground', 'k')
 class DataWindow(QMainWindow):
     def __init__(self):
         super(DataWindow, self).__init__()
+        
+        self.isClosable = False
         
         self.dataToolWidget = DataToolWidget()
         self.dataPlot = DataPlot()
@@ -38,8 +40,8 @@ class DataWindow(QMainWindow):
     def signal_handler(self):
         self.dataToolWidget.saveBtn.clicked.connect(self.dataPlot.save_data)
         self.dataToolWidget.averagesBox.textChanged.connect(self.dataPlot.set_averages)
-        self.dataPlot.updated.connect(self.dataToolWidget.countBox.setText)
-        self.dataPlot.updated2.connect(self.integralPlot.update)
+        self.dataPlot.countSignal.connect(self.dataToolWidget.countBox.setText)
+        self.dataPlot.integralSignal.connect(self.integralPlot.update)
         self.dataToolWidget.calibrateBtn.clicked.connect(lambda: self.dataPlot.calibrate(self.dataToolWidget.constBox.text(), self.dataToolWidget.startFreqBox.text(), self.dataToolWidget.endFreqBox.text()))
         
         self.displayToolWidget.openBtn.clicked.connect(self.displayPlot.open_data)
@@ -49,8 +51,11 @@ class DataWindow(QMainWindow):
         self.integralToolWidget.clearBtn.clicked.connect(self.integralPlot.clr)
         
     def closeEvent(self, event):
-        event.ignore()
-        self.update()
+        if self.isClosable:
+            event.accept()
+        else:
+            event.ignore()
+        # self.update()
         
 class DataToolWidget(QWidget):
     def __init__(self):
@@ -166,8 +171,8 @@ class Plot(pg.PlotWidget):
             self.plot(self.x, self.y, clear=True)
 
 class DataPlot(Plot):
-    updated = pyqtSignal(object)
-    updated2 = pyqtSignal(object)
+    countSignal = pyqtSignal(object)
+    integralSignal = pyqtSignal(object)
     def __init__(self):
         super(DataPlot, self).__init__()
         
@@ -191,8 +196,8 @@ class DataPlot(Plot):
                 if len(self.x) != len(self.y):
                     self.x = range(len(self.y))
                 self.plot(self.x, self.y, clear=True)
-            self.updated.emit(str(len(self.data)))
-            self.updated2.emit(sum(self.data[-1]))
+            self.countSignal.emit(str(len(self.data)))
+            self.integralSignal.emit(sum(self.data[-1]))
         # self.dataThread.dataPlotTrigger = True
         
     def set_averages(self, value):

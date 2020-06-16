@@ -1,10 +1,9 @@
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
+from PyQt5.QtWidgets import QSplitter, QMessageBox, QFileDialog, QScrollArea, QWidget, QGridLayout, QTableView
+from PyQt5.QtCore import Qt, QAbstractTableModel, QModelIndex
+from PyQt5.QtGui import QBrush, QColor
 from collections import OrderedDict
-from math import *
 import json
-import pdb
+# import pdb
 
 
 class ScanFunction(list):

@@ -1,9 +1,6 @@
-from threading import Lock
-from PyQt5.QtCore import *
-
-from serial import *
-from time import *
-import pdb
+from PyQt5.QtCore import QThread, pyqtSignal
+from serial import Serial, SerialException
+# import pdb
 
 
 class ControlPort(Serial):
@@ -30,7 +27,7 @@ class DataPort(Serial):
         # self.dataThread = DataThread(self, controlPort)
         
 class DataThread(QThread):
-    updateSignal = pyqtSignal(object)
+    dataSignal = pyqtSignal(object)
     textSignal = pyqtSignal(object)
     
     def __init__(self, controlPort, dataPort):
@@ -75,7 +72,7 @@ class DataThread(QThread):
                     while self.dataPort.in_waiting:
                         self.dataString[self.n] += self.dataPort.read(self.dataPort.in_waiting)
                     # if self.dataPlotTrigger:
-                    self.updateSignal.emit(self.dataString[self.n].strip(b'stop'))
+                    self.dataSignal.emit(self.dataString[self.n].strip(b'stop'))
                     self.n = (self.n + 1) % self.maxNumData
                     self.dataString[self.n] = b''
                     self.dataPort.reset_input_buffer()
