@@ -72,7 +72,6 @@ class ConnectionWindow(QDialog):
             self.dataPort.port = self.dataBox.text()
             self.dataPort.open()
             self.dataThread.dataPortAccess = True
-            # self.dataPort.dataThread.start()
             self.textWidget.appendPlainText("Data serial connected")
         except SerialException:
             self.textWidget.appendPlainText("No serial port found")

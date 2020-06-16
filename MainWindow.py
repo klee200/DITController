@@ -1,6 +1,5 @@
 # import pdb
 from PyQt5.QtWidgets import QMainWindow, QWidget, QGridLayout, QMessageBox, QPushButton, QPlainTextEdit
-# from PyQt5.QtCore import *
 from DialogWindows import ConnectionWindow, DataSettingsWindow, AddRemoveSegmentWindow, CalculatorWindow
 from DataWindow import DataWindow
 from ScanFunction import ScanWidget
@@ -102,23 +101,16 @@ class MainWindow(QMainWindow):
             scanData = json.dumps(self.scanWidget.scanFunction)
             self.connectWindow.controlPort.serial_write('D')
             self.connectWindow.controlPort.serial_write(scanData)
-            # readInputList = self.connectWindow.controlPort.serial_read('Download finished')
-            # for readInput in readInputList:
-                # self.textWidget.appendPlainText(readInput)
         except SerialException:
             self.textWidget.appendPlainText("No serial port found")
 
     def upload_scan(self):
         try:
             self.connectWindow.controlPort.serial_write('U')
-            # readInputList = self.connectWindow.controlPort.serial_read('Upload finished')
-            # for readInput in readInputList:
-                # self.textWidget.appendPlainText(readInput)
         except SerialException:
             self.textWidget.appendPlainText("No serial port found")
 
     def run_scan(self):
-        # self.connectWindow.dataPort.dataThread.controlPortAccess = True
         try:
             self.connectWindow.controlPort.serial_write('R')
             self.btnWidget.downloadBtn.setEnabled(False)
@@ -129,7 +121,6 @@ class MainWindow(QMainWindow):
             self.textWidget.appendPlainText("No serial port found")
 
     def stop_scan(self):
-        # self.connectWindow.dataPort.dataThread.controlPortAccess = False
         try:
             sleep(1)
             self.connectWindow.controlPort.serial_write('S')

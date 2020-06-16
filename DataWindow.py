@@ -176,7 +176,6 @@ class DataPlot(Plot):
     def __init__(self):
         super(DataPlot, self).__init__()
         
-        # self.dataThread = dataThread
         self.dataSample = 4
         self.numAverages = 1
         self.data = []
@@ -184,7 +183,6 @@ class DataPlot(Plot):
         self.build_widget()
 
     def update(self, data_string):
-        # self.dataThread.dataPlotTrigger = False
         self.data.append([data_string[j * 2] + data_string[j * 2 + 1] * 256 for j in range(0, int(len(data_string) / 2), self.dataSample)])
         if abs(len(self.data[-1]) - len(self.y)) > 10 and self.numAverages > 1:
             self.data.pop(-1)
@@ -198,7 +196,6 @@ class DataPlot(Plot):
                 self.plot(self.x, self.y, clear=True)
             self.countSignal.emit(str(len(self.data)))
             self.integralSignal.emit(sum(self.data[-1]))
-        # self.dataThread.dataPlotTrigger = True
         
     def set_averages(self, value):
         try:
