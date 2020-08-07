@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QDialog, QGridLayout, QLabel, QLineEdit, QFrame, QPu
 from PyQt5.QtCore import Qt, pyqtSignal
 from SerialPorts import ControlPort, DataPort, DataThread
 from serial import SerialException
-from math import pi, cos, sin, sqrt, cosh, sinh, acos, inf, floor, log10
+from math import pi, cos, sin, sqrt, cosh, sinh, acos, acosh, inf, floor, log10
 import numpy as np
 
 class ConnectionWindow(QDialog):
@@ -206,109 +206,170 @@ class CalculatorWindow(QDialog):
         self.calc_freq()
 
     def update(self):
-        self.targetBox.setText(str(max(min(float(self.targetBox.text()), 1), 0)))
+        self.targetBox.setText(str(max(min(float(self.targetBox.text()), 1), 0.01)))
         
-        self.calc_beta_r()
-        self.calc_beta_z()
-        self.calc_omega_r()
-        self.calc_omega_z()
+        # self.calc_beta_r()
+        # self.calc_beta_z()
+        # self.calc_omega_r()
+        # self.calc_omega_z()
         
-        self.constant = float(self.freqBox.text())**2 * float(self.mzBox.text())
-        self.updated.emit(str(self.constant))
-
-    def calc_beta_r(self):
-        try:
-            dHi = float(self.dBox.text()) / 100 * pi
-            dLo = (1 - float(self.dBox.text()) / 100) * pi
-
-            frHi = 2 * 4 * self.ELECTRON * float(self.hvBox.text()) / (float(self.mzBox.text()) * self.AMU * pow(float(self.freqBox.text()) * 2 * pi, 2) * (pow(float(self.rBox.text()) / 100, 2) + 2* pow(float(self.zBox.text()) / 100, 2)))
-            mrHi = [[0 for x in range(2)] for y in range(2)]
-            if frHi > 0:
-                mrHi[0][0] = cos(sqrt(frHi) * dHi)
-                mrHi[0][1] = 1 / sqrt(frHi) * sin(sqrt(frHi) * dHi)
-                mrHi[1][0] = -sqrt(frHi) * sin(sqrt(frHi) * dHi)
-                mrHi[1][1] = cos(sqrt(frHi) * dHi)
-            else:
-                mrHi[0][0] = cosh(sqrt(-frHi) * dHi)
-                mrHi[0][1] = 1 / sqrt(-frHi) * sinh(sqrt(-frHi) * dHi)
-                mrHi[1][0] = sqrt(-frHi) * sinh(sqrt(-frHi) * dHi)
-                mrHi[1][1] = cosh(sqrt(-frHi) * dHi)
-
-            frLo = 2 * 4 * self.ELECTRON * float(self.lvBox.text()) / (float(self.mzBox.text()) * self.AMU * pow(float(self.freqBox.text()) * 2 * pi, 2) * (pow(float(self.rBox.text()) / 100, 2) + 2 * pow(float(self.zBox.text()) / 100, 2)))
-            mrLo = [[0 for x in range(2)] for y in range(2)]
-            if frLo > 0:
-                mrLo[0][0] = cos(sqrt(frLo) * dLo)
-                mrLo[0][1] = 1 / sqrt(frLo) * sin(sqrt(frLo) * dLo)
-                mrLo[1][0] = -sqrt(frLo) * sin(sqrt(frLo) * dLo)
-                mrLo[1][1] = cos(sqrt(frLo) * dLo)
-            else:
-                mrLo[0][0] = cosh(sqrt(-frLo) * dLo)
-                mrLo[0][1] = 1 / sqrt(-frLo) * sinh(sqrt(-frLo) * dLo)
-                mrLo[1][0] = sqrt(-frLo) * sinh(sqrt(-frLo) * dLo)
-                mrLo[1][1] = cosh(sqrt(-frLo) * dLo)
-            mr = np.dot(mrHi, mrLo)
-            betaR = acos((mr[0][0] + mr[1][1]) / 2) / pi
-            
-        except:
-            betaR = inf
-            
+        betaR = self.calc_beta("r")
+        betaZ = self.calc_beta("z")
         self.brBox.setText(str(betaR))
-
-    def calc_beta_z(self):
-        try:
-            dHi = float(self.dBox.text()) / 100 * pi
-            dLo = (1 - float(self.dBox.text()) / 100) * pi
-
-            fzHi = -2 * 8 * self.ELECTRON * float(self.hvBox.text()) / (float(self.mzBox.text()) * self.AMU * pow(float(self.freqBox.text()) * 2 * pi, 2) * (pow(float(self.rBox.text()) / 100, 2) + 2 * pow(float(self.zBox.text()) / 100, 2)))
-            mzHi = [[0 for x in range(2)] for y in range(2)]
-            if fzHi > 0:
-                mzHi[0][0] = cos(sqrt(fzHi) * dHi)
-                mzHi[0][1] = 1 / sqrt(fzHi) * sin(sqrt(fzHi) * dHi)
-                mzHi[1][0] = -sqrt(fzHi) * sin(sqrt(fzHi) * dHi)
-                mzHi[1][1] = cos(sqrt(fzHi) * dHi)
-            else:
-                mzHi[0][0] = cosh(sqrt(-fzHi) * dHi)
-                mzHi[0][1] = 1 / sqrt(-fzHi) * sinh(sqrt(-fzHi) * dHi)
-                mzHi[1][0] = sqrt(-fzHi) * sinh(sqrt(-fzHi) * dHi)
-                mzHi[1][1] = cosh(sqrt(-fzHi) * dHi)
-
-            fzLo = -2 * 8 * self.ELECTRON * float(self.lvBox.text()) / (float(self.mzBox.text()) * self.AMU * pow(float(self.freqBox.text()) * 2 * pi, 2) * (pow(float(self.rBox.text()) / 100, 2) + 2 * pow(float(self.zBox.text()) / 100, 2)))
-            mzLo = [[0 for x in range(2)] for y in range(2)]
-            if fzLo > 0:
-                mzLo[0][0] = cos(sqrt(fzLo) * dLo)
-                mzLo[0][1] = 1 / sqrt(fzLo) * sin(sqrt(fzLo) * dLo)
-                mzLo[1][0] = -sqrt(fzLo) * sin(sqrt(fzLo) * dLo)
-                mzLo[1][1] = cos(sqrt(fzLo) * dLo)
-            else:
-                mzLo[0][0] = cosh(sqrt(-fzLo) * dLo)
-                mzLo[0][1] = 1 / sqrt(-fzLo) * sinh(sqrt(-fzLo) * dLo)
-                mzLo[1][0] = sqrt(-fzLo) * sinh(sqrt(-fzLo) * dLo)
-                mzLo[1][1] = cosh(sqrt(-fzLo) * dLo)
-            mz = np.dot(mzHi, mzLo)
-            betaZ = acos((mz[0][0] + mz[1][1]) / 2) / pi
-            
-        except:
-            betaZ = inf
-            
         self.bzBox.setText(str(betaZ))
-
-    def calc_omega_r(self):
-        try:
-            omegaR = 1 / 2 * float(self.brBox.text()) * float(self.freqBox.text())
-            
-        except:
-            omegaR = None
-
-        self.orBox.setText(str(omegaR))
+        self.orBox.setText(str(self.calc_omega(betaR)))
+        self.ozBox.setText(str(self.calc_omega(betaZ)))
         
-    def calc_omega_z(self):
         try:
-            omegaZ = 1 / 2 * float(self.bzBox.text()) * float(self.freqBox.text())
+            self.constant = float(self.freqBox.text())**2 * float(self.mzBox.text())
+            self.updated.emit(str(self.constant))
+        except ValueError:
+            None
+        
+    def calc_M(self, f, d):
+        m = [[0 for x in range(2)] for y in range(2)]
+        if f > 0:
+            m[0][0] = cos(sqrt(f) * d)
+            m[0][1] = 1 / sqrt(f) * sin(sqrt(f) * d)
+            m[1][0] = -sqrt(f) * sin(sqrt(f) * d)
+            m[1][1] = cos(sqrt(f) * d)
+        else:
+            m[0][0] = cosh(sqrt(-f) * d)
+            m[0][1] = 1 / sqrt(-f) * sinh(sqrt(-f) * d)
+            m[1][0] = sqrt(-f) * sinh(sqrt(-f) * d)
+            m[1][1] = cosh(sqrt(-f) * d)
+        return(m)
+        
+    def calc_beta(self, dim):
+        try:
+            if dim in ["x", "z"]:
+                c = -8
+            elif dim == "y":
+                c = 8
+            elif dim == "r":
+                c = 4
+            else:
+                return(ValueError)
+            
+            fHi = 2 * c * self.ELECTRON * float(self.hvBox.text()) / (float(self.mzBox.text()) * self.AMU * pow(float(self.freqBox.text()) * 2 * pi, 2) * (pow(float(self.rBox.text()) / 100, 2) + 2* pow(float(self.zBox.text()) / 100, 2)))
+            dHi = float(self.dBox.text()) / 100 * pi
+            mHi = self.calc_M(fHi, dHi)
+                
+            fLo = 2 * c * self.ELECTRON * float(self.lvBox.text()) / (float(self.mzBox.text()) * self.AMU * pow(float(self.freqBox.text()) * 2 * pi, 2) * (pow(float(self.rBox.text()) / 100, 2) + 2 * pow(float(self.zBox.text()) / 100, 2)))
+            dLo = (1 - float(self.dBox.text()) / 100) * pi
+            mLo = self.calc_M(fLo, dLo)
+            
+            m = np.dot(mHi, mLo)
+            
+            beta = acos((m[0][0] + m[1][1]) / 2) / pi
+                
+        except:
+            beta = inf
+            
+        return(beta)
+            
+    # def calc_beta_r(self):
+    #     try:
+    #         dHi = float(self.dBox.text()) / 100 * pi
+    #         dLo = (1 - float(self.dBox.text()) / 100) * pi
+
+    #         frHi = 2 * 4 * self.ELECTRON * float(self.hvBox.text()) / (float(self.mzBox.text()) * self.AMU * pow(float(self.freqBox.text()) * 2 * pi, 2) * (pow(float(self.rBox.text()) / 100, 2) + 2* pow(float(self.zBox.text()) / 100, 2)))
+    #         mrHi = [[0 for x in range(2)] for y in range(2)]
+    #         if frHi > 0:
+    #             mrHi[0][0] = cos(sqrt(frHi) * dHi)
+    #             mrHi[0][1] = 1 / sqrt(frHi) * sin(sqrt(frHi) * dHi)
+    #             mrHi[1][0] = -sqrt(frHi) * sin(sqrt(frHi) * dHi)
+    #             mrHi[1][1] = cos(sqrt(frHi) * dHi)
+    #         else:
+    #             mrHi[0][0] = cosh(sqrt(-frHi) * dHi)
+    #             mrHi[0][1] = 1 / sqrt(-frHi) * sinh(sqrt(-frHi) * dHi)
+    #             mrHi[1][0] = sqrt(-frHi) * sinh(sqrt(-frHi) * dHi)
+    #             mrHi[1][1] = cosh(sqrt(-frHi) * dHi)
+
+    #         frLo = 2 * 4 * self.ELECTRON * float(self.lvBox.text()) / (float(self.mzBox.text()) * self.AMU * pow(float(self.freqBox.text()) * 2 * pi, 2) * (pow(float(self.rBox.text()) / 100, 2) + 2 * pow(float(self.zBox.text()) / 100, 2)))
+    #         mrLo = [[0 for x in range(2)] for y in range(2)]
+    #         if frLo > 0:
+    #             mrLo[0][0] = cos(sqrt(frLo) * dLo)
+    #             mrLo[0][1] = 1 / sqrt(frLo) * sin(sqrt(frLo) * dLo)
+    #             mrLo[1][0] = -sqrt(frLo) * sin(sqrt(frLo) * dLo)
+    #             mrLo[1][1] = cos(sqrt(frLo) * dLo)
+    #         else:
+    #             mrLo[0][0] = cosh(sqrt(-frLo) * dLo)
+    #             mrLo[0][1] = 1 / sqrt(-frLo) * sinh(sqrt(-frLo) * dLo)
+    #             mrLo[1][0] = sqrt(-frLo) * sinh(sqrt(-frLo) * dLo)
+    #             mrLo[1][1] = cosh(sqrt(-frLo) * dLo)
+    #         mr = np.dot(mrHi, mrLo)
+    #         betaR = acos((mr[0][0] + mr[1][1]) / 2) / pi
+            
+    #     except:
+    #         betaR = inf
+            
+    #     self.brBox.setText(str(betaR))
+
+    # def calc_beta_z(self):
+    #     try:
+    #         dHi = float(self.dBox.text()) / 100 * pi
+    #         dLo = (1 - float(self.dBox.text()) / 100) * pi
+
+    #         fzHi = -2 * 8 * self.ELECTRON * float(self.hvBox.text()) / (float(self.mzBox.text()) * self.AMU * pow(float(self.freqBox.text()) * 2 * pi, 2) * (pow(float(self.rBox.text()) / 100, 2) + 2 * pow(float(self.zBox.text()) / 100, 2)))
+    #         mzHi = [[0 for x in range(2)] for y in range(2)]
+    #         if fzHi > 0:
+    #             mzHi[0][0] = cos(sqrt(fzHi) * dHi)
+    #             mzHi[0][1] = 1 / sqrt(fzHi) * sin(sqrt(fzHi) * dHi)
+    #             mzHi[1][0] = -sqrt(fzHi) * sin(sqrt(fzHi) * dHi)
+    #             mzHi[1][1] = cos(sqrt(fzHi) * dHi)
+    #         else:
+    #             mzHi[0][0] = cosh(sqrt(-fzHi) * dHi)
+    #             mzHi[0][1] = 1 / sqrt(-fzHi) * sinh(sqrt(-fzHi) * dHi)
+    #             mzHi[1][0] = sqrt(-fzHi) * sinh(sqrt(-fzHi) * dHi)
+    #             mzHi[1][1] = cosh(sqrt(-fzHi) * dHi)
+
+    #         fzLo = -2 * 8 * self.ELECTRON * float(self.lvBox.text()) / (float(self.mzBox.text()) * self.AMU * pow(float(self.freqBox.text()) * 2 * pi, 2) * (pow(float(self.rBox.text()) / 100, 2) + 2 * pow(float(self.zBox.text()) / 100, 2)))
+    #         mzLo = [[0 for x in range(2)] for y in range(2)]
+    #         if fzLo > 0:
+    #             mzLo[0][0] = cos(sqrt(fzLo) * dLo)
+    #             mzLo[0][1] = 1 / sqrt(fzLo) * sin(sqrt(fzLo) * dLo)
+    #             mzLo[1][0] = -sqrt(fzLo) * sin(sqrt(fzLo) * dLo)
+    #             mzLo[1][1] = cos(sqrt(fzLo) * dLo)
+    #         else:
+    #             mzLo[0][0] = cosh(sqrt(-fzLo) * dLo)
+    #             mzLo[0][1] = 1 / sqrt(-fzLo) * sinh(sqrt(-fzLo) * dLo)
+    #             mzLo[1][0] = sqrt(-fzLo) * sinh(sqrt(-fzLo) * dLo)
+    #             mzLo[1][1] = cosh(sqrt(-fzLo) * dLo)
+    #         mz = np.dot(mzHi, mzLo)
+    #         betaZ = acos((mz[0][0] + mz[1][1]) / 2) / pi
+            
+    #     except:
+    #         betaZ = inf
+            
+    #     self.bzBox.setText(str(betaZ))
+
+    def calc_omega(self, beta):
+        try:
+            omega = 1/2 * beta * float(self.freqBox.text())
             
         except:
-            omegaZ = None
+            omega = inf
             
-        self.ozBox.setText(str(omegaZ))
+        return(omega)
+
+    # def calc_omega_r(self):
+    #     try:
+    #         omegaR = 1 / 2 * float(self.brBox.text()) * float(self.freqBox.text())
+            
+    #     except:
+    #         omegaR = None
+
+    #     self.orBox.setText(str(omegaR))
+        
+    # def calc_omega_z(self):
+    #     try:
+    #         omegaZ = 1 / 2 * float(self.bzBox.text()) * float(self.freqBox.text())
+            
+    #     except:
+    #         omegaZ = None
+            
+    #     self.ozBox.setText(str(omegaZ))
 
     def calc_freq(self):
         for i in range(floor(log10(float(self.freqBox.text()))), -1, -1):
