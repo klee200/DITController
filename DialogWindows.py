@@ -5,7 +5,7 @@ from serial import SerialException
 from math import pi, cos, sin, sqrt, cosh, sinh, acos, inf, floor, log10
 import numpy as np
 import pyqtgraph as pg
-import pyqtgraph.opengl as gl
+# import pyqtgraph.opengl as gl
 
 
 class ConnectionWindow(QDialog):
@@ -193,13 +193,13 @@ class CalculatorWindow(QDialog):
         self.layout().addWidget(self.ozBox, 5, 5)
         self.ozBox.setEnabled(False)
         
-        pg.mkQApp()
-        self.plotBtn = QPushButton("Plot")
-        self.layout().addWidget(self.plotBtn, 5, 0)
-        self.diagram = gl.GLViewWidget()
-        self.diagram.addItem(gl.GLSurfacePlotItem(np.array([1,2]), np.array([1,2]), np.array([[1,2],[1,2]])))
-        self.layout().addWidget(self.diagram, 6, 0, 6, 6)
-        self.diagram.show()
+        # pg.mkQApp()
+        # self.plotBtn = QPushButton("Plot")
+        # self.layout().addWidget(self.plotBtn, 5, 0)
+        # self.diagram = gl.GLViewWidget()
+        # self.diagram.addItem(gl.GLSurfacePlotItem(np.array([1,2]), np.array([1,2]), np.array([[1,2],[1,2]])))
+        # self.layout().addWidget(self.diagram, 6, 0, 6, 6)
+        # self.diagram.show()
 
     def signal_handler(self):
         self.rBox.textChanged.connect(self.update)
@@ -213,11 +213,11 @@ class CalculatorWindow(QDialog):
         self.freqBtn.clicked.connect(self.calc_freq)
         self.mzBtn.clicked.connect(self.calc_mz)
         
-        self.plotBtn.clicked.connect(self.updatePlot)
+        # self.plotBtn.clicked.connect(self.updatePlot)
         
         self.update()
         self.calc_freq()
-        self.updatePlot()
+        # self.updatePlot()
 
     def update(self):
         try:
@@ -296,6 +296,7 @@ class CalculatorWindow(QDialog):
 
     def calc_freq(self):
         try:
+            float(self.mzBox.text())
             for i in range(floor(log10(float(self.freqBox.text()))), -1, -1):
                 if float(self.brBox.text()) == inf or float(self.bzBox.text()) == inf:
                     None
@@ -312,6 +313,7 @@ class CalculatorWindow(QDialog):
                 
     def calc_mz(self):
         try:
+            float(self.freqBox.text())
             for i in range(floor(log10(float(self.mzBox.text()))), -1, -1):
                 if float(self.brBox.text()) == inf or float(self.bzBox.text()) == inf:
                     None
@@ -326,15 +328,15 @@ class CalculatorWindow(QDialog):
         except ValueError:
             None
 
-    def updatePlot(self):
-        hv = float(self.hvBox.text())
-        lv = float(self.lvBox.text())
-        mz = float(self.mzBox.text())
-        r0 = float(self.rBox.text())
-        z0 = float(self.zBox.text())
+    # def updatePlot(self):
+        # hv = float(self.hvBox.text())
+        # lv = float(self.lvBox.text())
+        # mz = float(self.mzBox.text())
+        # r0 = float(self.rBox.text())
+        # z0 = float(self.zBox.text())
         
-        plotQ = np.arange(0.0001, 1, 0.1)
-        plotF = np.sqrt(2 * 4 * self.ELECTRON * hv / (mz * self.AMU) / plotQ / (pow(r0 / 100, 2) + 2* pow(z0 / 100, 2))) / (2 * pi)
-        plotD = np.arange(0, 100, 10)
-        plotB = np.array([[self.calc_beta("z", d, f, hv, lv, mz, r0, z0) for f in plotF] for d in plotD])
-        print(plotB)
+        # plotQ = np.arange(0.0001, 1, 0.1)
+        # plotF = np.sqrt(2 * 4 * self.ELECTRON * hv / (mz * self.AMU) / plotQ / (pow(r0 / 100, 2) + 2* pow(z0 / 100, 2))) / (2 * pi)
+        # plotD = np.arange(0, 100, 10)
+        # plotB = np.array([[self.calc_beta("z", d, f, hv, lv, mz, r0, z0) for f in plotF] for d in plotD])
+        # print(plotB)
