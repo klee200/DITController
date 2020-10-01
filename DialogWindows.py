@@ -2,8 +2,11 @@ from PyQt5.QtWidgets import QDialog, QGridLayout, QLabel, QLineEdit, QFrame, QPu
 from PyQt5.QtCore import Qt, pyqtSignal
 from SerialPorts import ControlPort, DataPort, DataThread
 from serial import SerialException
-from math import pi, cos, sin, sqrt, cosh, sinh, acos, acosh, inf, floor, log10
+from math import pi, cos, sin, sqrt, cosh, sinh, acos, inf, floor, log10
 import numpy as np
+import pyqtgraph as pg
+import pyqtgraph.opengl as gl
+
 
 class ConnectionWindow(QDialog):
     def __init__(self, textWidget):
@@ -189,6 +192,14 @@ class CalculatorWindow(QDialog):
         self.layout().addWidget(QLabel("omega z (Hz)"), 5, 4)
         self.layout().addWidget(self.ozBox, 5, 5)
         self.ozBox.setEnabled(False)
+        
+        pg.mkQApp()
+        self.plotBtn = QPushButton("Plot")
+        self.layout().addWidget(self.plotBtn, 5, 0)
+        self.diagram = gl.GLViewWidget()
+        self.diagram.addItem(gl.GLSurfacePlotItem(np.array([1,2]), np.array([1,2]), np.array([[1,2],[1,2]])))
+        self.layout().addWidget(self.diagram, 6, 0, 6, 6)
+        self.diagram.show()
 
     def signal_handler(self):
         self.rBox.textChanged.connect(self.update)
@@ -202,27 +213,33 @@ class CalculatorWindow(QDialog):
         self.freqBtn.clicked.connect(self.calc_freq)
         self.mzBtn.clicked.connect(self.calc_mz)
         
+        self.plotBtn.clicked.connect(self.updatePlot)
+        
         self.update()
         self.calc_freq()
+        self.updatePlot()
 
     def update(self):
-        self.targetBox.setText(str(max(min(float(self.targetBox.text()), 1), 0.01)))
-        
-        # self.calc_beta_r()
-        # self.calc_beta_z()
-        # self.calc_omega_r()
-        # self.calc_omega_z()
-        
-        betaR = self.calc_beta("r")
-        betaZ = self.calc_beta("z")
-        self.brBox.setText(str(betaR))
-        self.bzBox.setText(str(betaZ))
-        self.orBox.setText(str(self.calc_omega(betaR)))
-        self.ozBox.setText(str(self.calc_omega(betaZ)))
-        
         try:
+            self.targetBox.setText(str(max(min(float(self.targetBox.text()), 1), 0.0001)))
+                        
+            duty = float(self.dBox.text())
+            freq = float(self.freqBox.text())
+            hv = float(self.hvBox.text())
+            lv = float(self.lvBox.text())
+            mz = float(self.mzBox.text())
+            r0 = float(self.rBox.text())
+            z0 = float(self.zBox.text())
+            betaR = self.calc_beta("r", duty, freq, hv, lv, mz, r0, z0)
+            betaZ = self.calc_beta("z", duty, freq, hv, lv, mz, r0, z0)
+            self.brBox.setText(str(betaR))
+            self.bzBox.setText(str(betaZ))
+            self.orBox.setText(str(self.calc_omega(betaR)))
+            self.ozBox.setText(str(self.calc_omega(betaZ)))
+            
             self.constant = float(self.freqBox.text())**2 * float(self.mzBox.text())
             self.updated.emit(str(self.constant))
+            
         except ValueError:
             None
         
@@ -240,7 +257,7 @@ class CalculatorWindow(QDialog):
             m[1][1] = cosh(sqrt(-f) * d)
         return(m)
         
-    def calc_beta(self, dim):
+    def calc_beta(self, dim, duty, freq, hv, lv, mz, r0, z0):
         try:
             if dim in ["x", "z"]:
                 c = -8
@@ -251,12 +268,12 @@ class CalculatorWindow(QDialog):
             else:
                 return(ValueError)
             
-            fHi = 2 * c * self.ELECTRON * float(self.hvBox.text()) / (float(self.mzBox.text()) * self.AMU * pow(float(self.freqBox.text()) * 2 * pi, 2) * (pow(float(self.rBox.text()) / 100, 2) + 2* pow(float(self.zBox.text()) / 100, 2)))
-            dHi = float(self.dBox.text()) / 100 * pi
+            fHi = 2 * c * self.ELECTRON * hv / (mz * self.AMU) / pow(freq * 2 * pi, 2) / (pow(r0 / 100, 2) + 2* pow(z0 / 100, 2))
+            dHi = duty / 100 * pi
             mHi = self.calc_M(fHi, dHi)
-                
-            fLo = 2 * c * self.ELECTRON * float(self.lvBox.text()) / (float(self.mzBox.text()) * self.AMU * pow(float(self.freqBox.text()) * 2 * pi, 2) * (pow(float(self.rBox.text()) / 100, 2) + 2 * pow(float(self.zBox.text()) / 100, 2)))
-            dLo = (1 - float(self.dBox.text()) / 100) * pi
+            
+            fLo = 2 * c * self.ELECTRON * lv / (mz * self.AMU) / pow(freq * 2 * pi, 2) / (pow(r0 / 100, 2) + 2 * pow(z0 / 100, 2))
+            dLo = (1 - duty / 100) * pi
             mLo = self.calc_M(fLo, dLo)
             
             m = np.dot(mHi, mLo)
@@ -267,83 +284,7 @@ class CalculatorWindow(QDialog):
             beta = inf
             
         return(beta)
-            
-    # def calc_beta_r(self):
-    #     try:
-    #         dHi = float(self.dBox.text()) / 100 * pi
-    #         dLo = (1 - float(self.dBox.text()) / 100) * pi
-
-    #         frHi = 2 * 4 * self.ELECTRON * float(self.hvBox.text()) / (float(self.mzBox.text()) * self.AMU * pow(float(self.freqBox.text()) * 2 * pi, 2) * (pow(float(self.rBox.text()) / 100, 2) + 2* pow(float(self.zBox.text()) / 100, 2)))
-    #         mrHi = [[0 for x in range(2)] for y in range(2)]
-    #         if frHi > 0:
-    #             mrHi[0][0] = cos(sqrt(frHi) * dHi)
-    #             mrHi[0][1] = 1 / sqrt(frHi) * sin(sqrt(frHi) * dHi)
-    #             mrHi[1][0] = -sqrt(frHi) * sin(sqrt(frHi) * dHi)
-    #             mrHi[1][1] = cos(sqrt(frHi) * dHi)
-    #         else:
-    #             mrHi[0][0] = cosh(sqrt(-frHi) * dHi)
-    #             mrHi[0][1] = 1 / sqrt(-frHi) * sinh(sqrt(-frHi) * dHi)
-    #             mrHi[1][0] = sqrt(-frHi) * sinh(sqrt(-frHi) * dHi)
-    #             mrHi[1][1] = cosh(sqrt(-frHi) * dHi)
-
-    #         frLo = 2 * 4 * self.ELECTRON * float(self.lvBox.text()) / (float(self.mzBox.text()) * self.AMU * pow(float(self.freqBox.text()) * 2 * pi, 2) * (pow(float(self.rBox.text()) / 100, 2) + 2 * pow(float(self.zBox.text()) / 100, 2)))
-    #         mrLo = [[0 for x in range(2)] for y in range(2)]
-    #         if frLo > 0:
-    #             mrLo[0][0] = cos(sqrt(frLo) * dLo)
-    #             mrLo[0][1] = 1 / sqrt(frLo) * sin(sqrt(frLo) * dLo)
-    #             mrLo[1][0] = -sqrt(frLo) * sin(sqrt(frLo) * dLo)
-    #             mrLo[1][1] = cos(sqrt(frLo) * dLo)
-    #         else:
-    #             mrLo[0][0] = cosh(sqrt(-frLo) * dLo)
-    #             mrLo[0][1] = 1 / sqrt(-frLo) * sinh(sqrt(-frLo) * dLo)
-    #             mrLo[1][0] = sqrt(-frLo) * sinh(sqrt(-frLo) * dLo)
-    #             mrLo[1][1] = cosh(sqrt(-frLo) * dLo)
-    #         mr = np.dot(mrHi, mrLo)
-    #         betaR = acos((mr[0][0] + mr[1][1]) / 2) / pi
-            
-    #     except:
-    #         betaR = inf
-            
-    #     self.brBox.setText(str(betaR))
-
-    # def calc_beta_z(self):
-    #     try:
-    #         dHi = float(self.dBox.text()) / 100 * pi
-    #         dLo = (1 - float(self.dBox.text()) / 100) * pi
-
-    #         fzHi = -2 * 8 * self.ELECTRON * float(self.hvBox.text()) / (float(self.mzBox.text()) * self.AMU * pow(float(self.freqBox.text()) * 2 * pi, 2) * (pow(float(self.rBox.text()) / 100, 2) + 2 * pow(float(self.zBox.text()) / 100, 2)))
-    #         mzHi = [[0 for x in range(2)] for y in range(2)]
-    #         if fzHi > 0:
-    #             mzHi[0][0] = cos(sqrt(fzHi) * dHi)
-    #             mzHi[0][1] = 1 / sqrt(fzHi) * sin(sqrt(fzHi) * dHi)
-    #             mzHi[1][0] = -sqrt(fzHi) * sin(sqrt(fzHi) * dHi)
-    #             mzHi[1][1] = cos(sqrt(fzHi) * dHi)
-    #         else:
-    #             mzHi[0][0] = cosh(sqrt(-fzHi) * dHi)
-    #             mzHi[0][1] = 1 / sqrt(-fzHi) * sinh(sqrt(-fzHi) * dHi)
-    #             mzHi[1][0] = sqrt(-fzHi) * sinh(sqrt(-fzHi) * dHi)
-    #             mzHi[1][1] = cosh(sqrt(-fzHi) * dHi)
-
-    #         fzLo = -2 * 8 * self.ELECTRON * float(self.lvBox.text()) / (float(self.mzBox.text()) * self.AMU * pow(float(self.freqBox.text()) * 2 * pi, 2) * (pow(float(self.rBox.text()) / 100, 2) + 2 * pow(float(self.zBox.text()) / 100, 2)))
-    #         mzLo = [[0 for x in range(2)] for y in range(2)]
-    #         if fzLo > 0:
-    #             mzLo[0][0] = cos(sqrt(fzLo) * dLo)
-    #             mzLo[0][1] = 1 / sqrt(fzLo) * sin(sqrt(fzLo) * dLo)
-    #             mzLo[1][0] = -sqrt(fzLo) * sin(sqrt(fzLo) * dLo)
-    #             mzLo[1][1] = cos(sqrt(fzLo) * dLo)
-    #         else:
-    #             mzLo[0][0] = cosh(sqrt(-fzLo) * dLo)
-    #             mzLo[0][1] = 1 / sqrt(-fzLo) * sinh(sqrt(-fzLo) * dLo)
-    #             mzLo[1][0] = sqrt(-fzLo) * sinh(sqrt(-fzLo) * dLo)
-    #             mzLo[1][1] = cosh(sqrt(-fzLo) * dLo)
-    #         mz = np.dot(mzHi, mzLo)
-    #         betaZ = acos((mz[0][0] + mz[1][1]) / 2) / pi
-            
-    #     except:
-    #         betaZ = inf
-            
-    #     self.bzBox.setText(str(betaZ))
-
+ 
     def calc_omega(self, beta):
         try:
             omega = 1/2 * beta * float(self.freqBox.text())
@@ -353,46 +294,47 @@ class CalculatorWindow(QDialog):
             
         return(omega)
 
-    # def calc_omega_r(self):
-    #     try:
-    #         omegaR = 1 / 2 * float(self.brBox.text()) * float(self.freqBox.text())
-            
-    #     except:
-    #         omegaR = None
-
-    #     self.orBox.setText(str(omegaR))
-        
-    # def calc_omega_z(self):
-    #     try:
-    #         omegaZ = 1 / 2 * float(self.bzBox.text()) * float(self.freqBox.text())
-            
-    #     except:
-    #         omegaZ = None
-            
-    #     self.ozBox.setText(str(omegaZ))
-
     def calc_freq(self):
-        for i in range(floor(log10(float(self.freqBox.text()))), -1, -1):
-            if float(self.brBox.text()) == inf or float(self.bzBox.text()) == inf:
-                None
-            elif float(self.bzBox.text()) < float(self.targetBox.text()):
-                while float(self.bzBox.text()) < float(self.targetBox.text()) and float(self.brBox.text()) < inf and float(self.freqBox.text()) > 0:
-                    self.freqBox.setText(str(float(self.freqBox.text()) - pow(10, i)))
-                self.freqBox.setText(str(float(self.freqBox.text()) + pow(10, i)))
-            else:
-                while float(self.bzBox.text()) > float(self.targetBox.text()) and float(self.bzBox.text()) < inf and float(self.brBox.text()) < inf and float(self.freqBox.text()) > 0:
+        try:
+            for i in range(floor(log10(float(self.freqBox.text()))), -1, -1):
+                if float(self.brBox.text()) == inf or float(self.bzBox.text()) == inf:
+                    None
+                elif float(self.bzBox.text()) < float(self.targetBox.text()):
+                    while float(self.bzBox.text()) < float(self.targetBox.text()) and float(self.brBox.text()) < inf and float(self.freqBox.text()) > 0:
+                        self.freqBox.setText(str(float(self.freqBox.text()) - pow(10, i)))
                     self.freqBox.setText(str(float(self.freqBox.text()) + pow(10, i)))
-                self.freqBox.setText(str(float(self.freqBox.text()) - pow(10, i)))
+                else:
+                    while float(self.bzBox.text()) > float(self.targetBox.text()) and float(self.bzBox.text()) < inf and float(self.brBox.text()) < inf and float(self.freqBox.text()) > 0:
+                        self.freqBox.setText(str(float(self.freqBox.text()) + pow(10, i)))
+                    self.freqBox.setText(str(float(self.freqBox.text()) - pow(10, i)))
+        except ValueError:
+            None
                 
     def calc_mz(self):
-        for i in range(floor(log10(float(self.mzBox.text()))), -1, -1):
-            if float(self.brBox.text()) == inf or float(self.bzBox.text()) == inf:
-                None
-            elif float(self.bzBox.text()) < float(self.targetBox.text()):
-                while float(self.bzBox.text()) < float(self.targetBox.text()) and float(self.brBox.text()) < inf and float(self.mzBox.text()) > 0:
-                    self.mzBox.setText(str(float(self.mzBox.text()) - pow(10, i)))
-                self.mzBox.setText(str(float(self.mzBox.text()) + pow(10, i)))
-            else:
-                while float(self.bzBox.text()) > float(self.targetBox.text()) and float(self.bzBox.text()) < inf and float(self.brBox.text()) < inf and float(self.mzBox.text()) > 0:
+        try:
+            for i in range(floor(log10(float(self.mzBox.text()))), -1, -1):
+                if float(self.brBox.text()) == inf or float(self.bzBox.text()) == inf:
+                    None
+                elif float(self.bzBox.text()) < float(self.targetBox.text()):
+                    while float(self.bzBox.text()) < float(self.targetBox.text()) and float(self.brBox.text()) < inf and float(self.mzBox.text()) > 0:
+                        self.mzBox.setText(str(float(self.mzBox.text()) - pow(10, i)))
                     self.mzBox.setText(str(float(self.mzBox.text()) + pow(10, i)))
-                self.mzBox.setText(str(float(self.mzBox.text()) - pow(10, i)))
+                else:
+                    while float(self.bzBox.text()) > float(self.targetBox.text()) and float(self.bzBox.text()) < inf and float(self.brBox.text()) < inf and float(self.mzBox.text()) > 0:
+                        self.mzBox.setText(str(float(self.mzBox.text()) + pow(10, i)))
+                    self.mzBox.setText(str(float(self.mzBox.text()) - pow(10, i)))
+        except ValueError:
+            None
+
+    def updatePlot(self):
+        hv = float(self.hvBox.text())
+        lv = float(self.lvBox.text())
+        mz = float(self.mzBox.text())
+        r0 = float(self.rBox.text())
+        z0 = float(self.zBox.text())
+        
+        plotQ = np.arange(0.0001, 1, 0.1)
+        plotF = np.sqrt(2 * 4 * self.ELECTRON * hv / (mz * self.AMU) / plotQ / (pow(r0 / 100, 2) + 2* pow(z0 / 100, 2))) / (2 * pi)
+        plotD = np.arange(0, 100, 10)
+        plotB = np.array([[self.calc_beta("z", d, f, hv, lv, mz, r0, z0) for f in plotF] for d in plotD])
+        print(plotB)
