@@ -4,8 +4,8 @@ from SerialPorts import ControlPort, DataPort, DataThread
 from serial import SerialException
 from math import pi, cos, sin, sqrt, cosh, sinh, acos, inf, floor, log10
 import numpy as np
-import pyqtgraph as pg
-# import pyqtgraph.opengl as gl
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.figure import Figure
 
 
 class ConnectionWindow(QDialog):
@@ -193,13 +193,12 @@ class CalculatorWindow(QDialog):
         self.layout().addWidget(self.ozBox, 5, 5)
         self.ozBox.setEnabled(False)
         
-        # pg.mkQApp()
-        # self.plotBtn = QPushButton("Plot")
-        # self.layout().addWidget(self.plotBtn, 5, 0)
-        # self.diagram = gl.GLViewWidget()
-        # self.diagram.addItem(gl.GLSurfacePlotItem(np.array([1,2]), np.array([1,2]), np.array([[1,2],[1,2]])))
-        # self.layout().addWidget(self.diagram, 6, 0, 6, 6)
-        # self.diagram.show()
+        self.plotBtn = QPushButton("Plot")
+        self.layout().addWidget(self.plotBtn, 5, 0)
+        self.diagram = Figure()
+        self.ax = self.diagram.add_subplot(111)
+        self.canvas = FigureCanvasQTAgg(self.diagram)
+        self.layout().addWidget(self.canvas, 6, 0, 6, 6)
 
     def signal_handler(self):
         self.rBox.textChanged.connect(self.update)
@@ -213,11 +212,10 @@ class CalculatorWindow(QDialog):
         self.freqBtn.clicked.connect(self.calc_freq)
         self.mzBtn.clicked.connect(self.calc_mz)
         
-        # self.plotBtn.clicked.connect(self.updatePlot)
+        self.plotBtn.clicked.connect(self.updatePlot)
         
         self.update()
         self.calc_freq()
-        # self.updatePlot()
 
     def update(self):
         try:
@@ -328,15 +326,28 @@ class CalculatorWindow(QDialog):
         except ValueError:
             None
 
-    # def updatePlot(self):
-        # hv = float(self.hvBox.text())
-        # lv = float(self.lvBox.text())
-        # mz = float(self.mzBox.text())
-        # r0 = float(self.rBox.text())
-        # z0 = float(self.zBox.text())
-        
-        # plotQ = np.arange(0.0001, 1, 0.1)
-        # plotF = np.sqrt(2 * 4 * self.ELECTRON * hv / (mz * self.AMU) / plotQ / (pow(r0 / 100, 2) + 2* pow(z0 / 100, 2))) / (2 * pi)
-        # plotD = np.arange(0, 100, 10)
-        # plotB = np.array([[self.calc_beta("z", d, f, hv, lv, mz, r0, z0) for f in plotF] for d in plotD])
-        # print(plotB)
+    def updatePlot(self):
+        try:
+            hv = float(self.hvBox.text())
+            lv = float(self.lvBox.text())
+            mz = float(self.mzBox.text())
+            r0 = float(self.rBox.text())
+            z0 = float(self.zBox.text())
+            
+            plotQ = np.arange(0.0001, 1, 0.005)
+            plotF = np.sqrt(2 * 4 * self.ELECTRON * hv / (mz * self.AMU) / plotQ / (pow(r0 / 100, 2) + 2* pow(z0 / 100, 2))) / (2 * pi)
+            plotD = np.arange(40, 70, 0.2)
+            plotBR = np.array([[self.calc_beta("r", d, f, hv, lv, mz, r0, z0) for f in plotF] for d in plotD])
+            plotBZ = np.array([[self.calc_beta("z", d, f, hv, lv, mz, r0, z0) for f in plotF] for d in plotD])
+            plotB = 255 - np.dstack((np.logical_and(plotBR != inf, plotBZ == inf), np.logical_and(plotBR != inf, plotBZ != inf), np.logical_and(plotBR == inf, plotBZ != inf))) * 255
+            self.ax.clear()
+            self.ax.imshow(plotB, aspect='auto', origin='lower', extent=[min(plotQ), max(plotQ), min(plotD), max(plotD)])
+            self.ax.set_xticks(plotQ[0::20])
+            self.ax.set_xticklabels(np.around(plotF[0::20] / 1000))
+            self.ax.set_xlabel("Fequency (kHz)")
+            self.ax.set_yticks(plotD[0::20])
+            self.ax.set_ylabel("Duty Cycle (%)")
+            self.ax.set_title("Stability for m/z " + self.mzBox.text())
+            self.canvas.draw()
+        except ValueError:
+            None
