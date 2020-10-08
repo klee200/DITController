@@ -196,7 +196,7 @@ class CalculatorWindow(QDialog):
         self.plotBtn = QPushButton("Plot")
         self.layout().addWidget(self.plotBtn, 5, 0)
         self.diagram = Figure()
-        self.ax = self.diagram.add_subplot(111)
+        self.axes = self.diagram.add_subplot(111)
         self.canvas = FigureCanvasQTAgg(self.diagram)
         self.layout().addWidget(self.canvas, 6, 0, 6, 6)
 
@@ -325,7 +325,7 @@ class CalculatorWindow(QDialog):
                     self.mzBox.setText(str(float(self.mzBox.text()) - pow(10, i)))
         except ValueError:
             None
-
+            
     def updatePlot(self):
         try:
             hv = float(self.hvBox.text())
@@ -334,20 +334,27 @@ class CalculatorWindow(QDialog):
             r0 = float(self.rBox.text())
             z0 = float(self.zBox.text())
             
-            plotQ = np.arange(0.0001, 1, 0.005)
-            plotF = np.sqrt(2 * 4 * self.ELECTRON * hv / (mz * self.AMU) / plotQ / (pow(r0 / 100, 2) + 2* pow(z0 / 100, 2))) / (2 * pi)
-            plotD = np.arange(40, 70, 0.2)
+            f = float(self.freqBox.text())
+            q = 2 * 4 * self.ELECTRON * (hv - lv) / 2 / (mz * self.AMU) / pow(f * 2 * pi, 2) / (pow(r0 / 100, 2) + 2* pow(z0 / 100, 2))
+            d = float(self.dBox.text())
+            
+            plotQ = np.arange(0.0001, max(1, q + 0.1), max(1, q + 0.1) / 200)
+            plotF = np.sqrt(2 * 4 * self.ELECTRON * (hv - lv) / 2 / (mz * self.AMU) / plotQ / (pow(r0 / 100, 2) + 2* pow(z0 / 100, 2))) / (2 * pi)
+            plotD = np.arange(min(40, d - 5), max(70, d + 5), (max(70, d + 5) - min(40, d - 5)) / 150)
+            
             plotBR = np.array([[self.calc_beta("r", d, f, hv, lv, mz, r0, z0) for f in plotF] for d in plotD])
             plotBZ = np.array([[self.calc_beta("z", d, f, hv, lv, mz, r0, z0) for f in plotF] for d in plotD])
             plotB = 255 - np.dstack((np.logical_and(plotBR != inf, plotBZ == inf), np.logical_and(plotBR != inf, plotBZ != inf), np.logical_and(plotBR == inf, plotBZ != inf))) * 255
-            self.ax.clear()
-            self.ax.imshow(plotB, aspect='auto', origin='lower', extent=[min(plotQ), max(plotQ), min(plotD), max(plotD)])
-            self.ax.set_xticks(plotQ[0::20])
-            self.ax.set_xticklabels(np.around(plotF[0::20] / 1000))
-            self.ax.set_xlabel("Fequency (kHz)")
-            self.ax.set_yticks(plotD[0::20])
-            self.ax.set_ylabel("Duty Cycle (%)")
-            self.ax.set_title("Stability for m/z " + self.mzBox.text())
+            
+            self.axes.clear()
+            self.axes.imshow(plotB, aspect='auto', origin='lower', extent=[min(plotQ), max(plotQ), min(plotD), max(plotD)])
+            self.axes.set_xticks(plotQ[0::20])
+            self.axes.set_xticklabels(np.around(plotF[0::20] / 1000))
+            self.axes.set_xlabel("Fequency (kHz)")
+            self.axes.set_yticks(plotD[0::20])
+            self.axes.set_ylabel("Duty Cycle (%)")
+            self.axes.set_title("Stability for m/z " + self.mzBox.text())
+            self.axes.plot(q, d, marker='o', color='black')
             self.canvas.draw()
         except ValueError:
             None
